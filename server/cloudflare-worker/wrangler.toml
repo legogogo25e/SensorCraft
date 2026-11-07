@@ -7,7 +7,7 @@ workers_dev = true
 GITHUB_OWNER = "legogogo25e"
 GITHUB_REPO = "SensorCraft"
 ALLOWED_ORIGINS = "https://legogogo25e.github.io"
-RATE_LIMIT_PER_HOUR = "10"
+RATE_LIMIT_PER_HOUR = "50"
 # ISSUE_LABELS = "sensorcraft-log"
 
 # Optional but recommended: per-IP rate limiting.
