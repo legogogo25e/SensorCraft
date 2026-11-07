@@ -72,6 +72,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const feedback = await page.$eval('#rt-target-text', (el) => el.textContent);
   console.log('抢先反馈:', JSON.stringify(feedback));
   if (!feedback.includes('太早了')) fail('抢先后没出现「太早了」反馈，实际：' + feedback);
+  // 回归：jsPsych 会在 #rt-display 里再 append 一个 #jspsych-content，
+  // 待开始占位框不清掉就会同时出现两个颜色框；跑起来只能有一个
+  const targetCount = await page.evaluate(() => document.querySelectorAll('.reaction-target').length);
+  if (targetCount !== 1) fail('测试进行中颜色目标框不是 1 个，实际 ' + targetCount + ' 个');
 
   // 3) 其余试次：等变绿再点，直到结果出现；第一次点按后确认显示当次毫秒数
   const deadline = Date.now() + 180000;

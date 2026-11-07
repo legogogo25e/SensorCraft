@@ -8,6 +8,13 @@
  *   不贴损伤标签。
  * - 颜色目标就是主窗口：点「开始」后提示文字收起，目标滚动到
  *   屏幕中央，整个测试都在同一张卡片内完成，不开新窗口、新标签。
+ * - 关键坑：jsPsych 的 prepareDom() 不会直接用你给的 display
+ *   element 渲染试次，而是在它里面再 append 一个
+ *   #jspsych-content  div，试次渲染在那个新 div 里。所以挂载时
+ *   放在 #rt-display 里的待开始占位框，必须在 initJsPsych 之前
+ *   清掉，否则测试一跑就会同时出现两个框（上面一个暗色待开始框、
+ *   下面一个绿色试次框），正是 2026-11-07 用户截图报的 bug。
+ *   跑完后把占位框写回去，免得两次测试之间留一个空框。
  * - 计时端点是目标上的 pointerdown，时间戳用 performance.now()，
  *   不用按钮 click（click 有额外延迟）也不用键盘。
  * - 刺激出现时刻用 requestAnimationFrame 回调的时间戳定锚：
@@ -56,6 +63,12 @@
 
   var DISCLAIMER_EN = 'This task measures your performance on this phone, not brain health or fitness to drive. Display and touch delays, practice, fatigue and distraction affect the result. It cannot diagnose concussion, dementia, ADHD or another condition. Compare results only under similar conditions on the same device.';
   var NO_SCORE_EN = 'No comparable score. The session was interrupted or contained too few valid trials. Your trial results were not scored.';
+
+  /* 待开始占位框：只在未开始 / 已完成时显示，initJsPsych 之前必须清掉
+     （见文件头 jsPsych prepareDom 的坑），否则会和试次框同时出现。 */
+  var IDLE_HTML =
+    '<div class="reaction-target state-idle"><div class="reaction-target-text">按「开始」<br><span class="reaction-feedback-sub">3 次练习 + 15 次计分</span></div>' +
+    '<div class="reaction-target-sub">待开始</div></div>';
 
   /* ---- 纯函数：中位 / 四分位 / 计分汇总（可单测，见文末测试钩子） ---- */
   function sortedCopy(values) {
@@ -313,8 +326,7 @@
         '<div class="module module-reaction-time">' +
         '<p class="module-note" id="rt-intro"><strong>玩法：</strong>目标变绿立刻点按。先练 3 次，再正式测 15 次；每次点按后都会显示当次反应时间。正式测试里有效满 12 次才有可比分数；抢先、超时、画面卡顿、切后台都会让当次作废。</p>' +
         '<div id="rt-display" class="reaction-display">' +
-        '<div class="reaction-target state-idle"><div class="reaction-target-text">按「开始」<br><span class="reaction-feedback-sub">3 次练习 + 15 次计分</span></div>' +
-        '<div class="reaction-target-sub">待开始</div></div>' +
+        IDLE_HTML +
         '</div>' +
         '<div class="module-toolbar">' +
         '<button class="mc-btn primary" type="button" id="rt-start">开始</button>' +
@@ -411,6 +423,9 @@
         exportBtn.disabled = false;
         copyBtn.disabled = false;
         introEl.hidden = false;
+        /* 跑完把待开始占位框写回去（同时清掉 jsPsych 残留的空壳），
+           两次测试之间不留空框。 */
+        displayEl.innerHTML = IDLE_HTML;
         var values = jsPsych.data.get().values();
         var scored = values.filter(function (d) { return d.phase === 'scored'; });
         lastSummary = summarizeScored(scored);
@@ -493,6 +508,10 @@
            整个测试都在同一张卡片内完成，不开新窗口、新标签。 */
         introEl.hidden = true;
         try { displayEl.scrollIntoView({ block: 'center' }); } catch (ignored) {}
+        /* 先清掉 #rt-display 里的待开始占位框（和上次跑完残留的空
+           jsPsych 壳）：jsPsych 会在里面 append 自己的 #jspsych-content，
+           不清就会同时出现两个框。清完再 init，试次框就是唯一的框。 */
+        displayEl.innerHTML = '';
         jsPsych = window.initJsPsych({
           display_element: 'rt-display',
           on_trial_finish: onTrialFinish,
