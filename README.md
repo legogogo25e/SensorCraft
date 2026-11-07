@@ -1,4 +1,4 @@
-![SENSORCRAFT — iPhone Sensor Laboratory · 14 Sensors](assets/banner.png)
+![SENSORCRAFT — iPhone Sensor Laboratory · 14 Sensors](banner.png)
 
 # ⛏️ SENSORCRAFT
 
