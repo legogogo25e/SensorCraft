@@ -4,9 +4,9 @@ compatibility_date = "2026-11-06"
 workers_dev = true
 
 [vars]
-GITHUB_OWNER = "legogogoagent"
-GITHUB_REPO = "biomed-quest"
-ALLOWED_ORIGINS = "https://legogogoagent.github.io"
+GITHUB_OWNER = "legogogo25e"
+GITHUB_REPO = "SensorCraft"
+ALLOWED_ORIGINS = "https://legogogo25e.github.io"
 RATE_LIMIT_PER_HOUR = "10"
 # ISSUE_LABELS = "sensorcraft-log"
 
