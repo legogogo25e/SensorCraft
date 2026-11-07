@@ -1496,3 +1496,42 @@ body.debug-open {
 .debug-endpoint .module-note {
   flex-basis: 100%;
 }
+
+/* face detect */
+.face-viewport {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.face-viewport video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.face-viewport canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.face-mask-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background: #0f0f12;
+  border: 2px solid #000;
+  box-shadow: var(--bevel-in);
+}
+
+.face-mask-wrap canvas {
+  width: 160px;
+  height: 120px;
+  image-rendering: pixelated;
+  border: 2px solid #373737;
+  background: #000;
+}
