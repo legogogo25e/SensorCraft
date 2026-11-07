@@ -1,9 +1,13 @@
 /* 反应时间：jsPsych 8.3.0 流程编排 + 自订插件计时。
  *
  * 任务（按 2026-11-07 Perplexity 多轮研究结论）：
- * - 3 次练习 + 15 次计分，约 45–75 秒；结果报中位反应时间、分布、
- *   有效次数、抢先次数；不设年龄百分位、不贴损伤标签。
- * - 练习有反馈（每试显示毫秒数 / 太早了 / 超时了），计分无反馈。
+ * - 3 次练习 + 15 次计分，约 45–75 秒；每次点按后都会显示当次
+ *   反应时间（练习 900ms、计分 700ms），结果列出全部 18 次
+ *   （练习 + 计分，含作废原因），可复制文本或导出 JSON；
+ *   汇总（中位、四分位距等）只用计分有效试，不设年龄百分位、
+ *   不贴损伤标签。
+ * - 颜色目标就是主窗口：点「开始」后提示文字收起，目标滚动到
+ *   屏幕中央，整个测试都在同一张卡片内完成，不开新窗口、新标签。
  * - 计时端点是目标上的 pointerdown，时间戳用 performance.now()，
  *   不用按钮 click（click 有额外延迟）也不用键盘。
  * - 刺激出现时刻用 requestAnimationFrame 回调的时间戳定锚：
@@ -47,7 +51,8 @@
   var FOREPERIOD_MAX_MS = 2800;
   var RESPONSE_TIMEOUT_MS = 2000;
   var FRAME_STALL_MS = 100;
-  var FEEDBACK_MS = 900;
+  var PRACTICE_FEEDBACK_MS = 900;
+  var SCORED_FEEDBACK_MS = 700;
 
   var DISCLAIMER_EN = 'This task measures your performance on this phone, not brain health or fitness to drive. Display and touch delays, practice, fatigue and distraction affect the result. It cannot diagnose concussion, dementia, ADHD or another condition. Compare results only under similar conditions on the same device.';
   var NO_SCORE_EN = 'No comparable score. The session was interrupted or contained too few valid trials. Your trial results were not scored.';
@@ -185,9 +190,12 @@
     }
 
     function finishWithFeedback(data, feedbackHtml) {
-      if (trial.feedback && feedbackHtml) {
+      /* 每次都显示当次结果再进下一试：点按后显示毫秒数，抢先 / 超时 /
+         卡顿显示原因；练习停 900ms、计分停 700ms。 */
+      if (feedbackHtml) {
         showFeedback(feedbackHtml);
-        jsPsych.pluginAPI.setTimeout(function () { finish(data); }, FEEDBACK_MS);
+        var fbMs = trial.phase === 'practice' ? PRACTICE_FEEDBACK_MS : SCORED_FEEDBACK_MS;
+        jsPsych.pluginAPI.setTimeout(function () { finish(data); }, fbMs);
       } else {
         finish(data);
       }
@@ -299,10 +307,11 @@
       var firstDone = false;
       var lastSummary = null;
       var lastDataJson = null;
+      var lastResultsText = null;
 
       ctx.root.innerHTML =
         '<div class="module module-reaction-time">' +
-        '<p class="module-note"><strong>玩法：</strong>目标变绿立刻点按。先练 3 次（有反馈），再正式测 15 次（无反馈）。正式测试里有效满 12 次才有可比分数；抢先、超时、画面卡顿、切后台都会让当次作废。</p>' +
+        '<p class="module-note" id="rt-intro"><strong>玩法：</strong>目标变绿立刻点按。先练 3 次，再正式测 15 次；每次点按后都会显示当次反应时间。正式测试里有效满 12 次才有可比分数；抢先、超时、画面卡顿、切后台都会让当次作废。</p>' +
         '<div id="rt-display" class="reaction-display">' +
         '<div class="reaction-target state-idle"><div class="reaction-target-text">按「开始」<br><span class="reaction-feedback-sub">3 次练习 + 15 次计分</span></div>' +
         '<div class="reaction-target-sub">待开始</div></div>' +
@@ -311,6 +320,7 @@
         '<button class="mc-btn primary" type="button" id="rt-start">开始</button>' +
         '<button class="mc-btn" type="button" id="rt-again" disabled>再测一次</button>' +
         '<button class="mc-btn" type="button" id="rt-export" disabled>导出数据 JSON</button>' +
+        '<button class="mc-btn" type="button" id="rt-copy" disabled>复制结果</button>' +
         '<span class="spacer"></span>' +
         '<span class="module-note" id="rt-note">jsPsych 8.3.0 · 本机运算</span>' +
         '</div>' +
@@ -320,9 +330,11 @@
         '</div>';
 
       var displayEl = ctx.root.querySelector('#rt-display');
+      var introEl = ctx.root.querySelector('#rt-intro');
       var startBtn = ctx.root.querySelector('#rt-start');
       var againBtn = ctx.root.querySelector('#rt-again');
       var exportBtn = ctx.root.querySelector('#rt-export');
+      var copyBtn = ctx.root.querySelector('#rt-copy');
       var resultsEl = ctx.root.querySelector('#rt-results');
       var note = ctx.root.querySelector('#rt-note');
 
@@ -338,7 +350,9 @@
         state.median = '--';
         lastSummary = null;
         lastDataJson = null;
+        lastResultsText = null;
         completed = false;
+        copyBtn.disabled = true;
         resultsEl.hidden = true;
         resultsEl.innerHTML = '';
         refreshReadout();
@@ -377,6 +391,16 @@
         refreshReadout();
       }
 
+      function trialLine(d) {
+        var label = (d.phase === 'practice' ? '练习 ' : '计分 ') + (d.index + 1);
+        if (d.valid && typeof d.rt === 'number') return { label: label, text: d.rt + ' ms' };
+        var reason = d.reason === 'anticipation' ? '抢先 · 作废'
+          : d.reason === 'timeout' ? '超时 · 作废'
+          : d.reason === 'frame-stall' ? '卡顿 · 作废'
+          : d.reason === 'interrupted' ? '中断 · 作废' : '作废';
+        return { label: label, text: reason };
+      }
+
       function showResults() {
         if (!ctx.isActive()) return;
         running = false;
@@ -385,10 +409,22 @@
         startBtn.textContent = '再测一次';
         againBtn.disabled = false;
         exportBtn.disabled = false;
+        copyBtn.disabled = false;
+        introEl.hidden = false;
         var values = jsPsych.data.get().values();
         var scored = values.filter(function (d) { return d.phase === 'scored'; });
         lastSummary = summarizeScored(scored);
         lastDataJson = jsPsych.data.get().json();
+        /* 全部 18 次列表（练习 + 计分，含作废原因），汇总只用计分有效试。 */
+        var listRows = values.map(function (d) {
+          var line = trialLine(d);
+          return '<div class="readout-row"><span class="readout-label">' + line.label + '</span><span class="readout-value">' + line.text + '</span></div>';
+        }).join('');
+        var listHtml = '<div class="readout-title"><span>全部反应时间</span><span>ALL TRIALS</span></div>' + listRows;
+        var listText = values.map(function (d) {
+          var line = trialLine(d);
+          return line.label + '：' + line.text;
+        }).join('\n');
         state.phase = '已完成';
         state.progress = '18 / 18';
         state.valid = lastSummary.valid + ' / ' + lastSummary.total;
@@ -404,8 +440,10 @@
             '<div class="readout-row"><span class="readout-label">超时</span><span class="readout-value">' + lastSummary.timeouts + ' 次</span></div>' +
             '<div class="readout-row"><span class="readout-label">卡顿作废</span><span class="readout-value">' + lastSummary.frameStalls + ' 次</span></div>' +
             '<div class="readout-row"><span class="readout-label">中断作废</span><span class="readout-value">' + lastSummary.interrupted + ' 次</span></div>' +
+            listHtml +
             '<p class="module-note">' + NO_SCORE_EN + '</p>' +
             '<p class="module-note">失败一次不说明反应快慢，只说明这次没测成。请坐稳、保持屏幕常亮，再测一次。</p>';
+          lastResultsText = '反应时间测试：没有可比分数（有效 ' + lastSummary.valid + '/' + lastSummary.total + '，需满 12 次）\n' + listText;
           note.textContent = '未达有效次数，未出分数';
         } else {
           resultsEl.innerHTML =
@@ -415,7 +453,11 @@
             '<div class="readout-row"><span class="readout-label">最快 / 最慢</span><span class="readout-value">' + Math.round(lastSummary.min) + ' / ' + Math.round(lastSummary.max) + ' ms</span></div>' +
             '<div class="readout-row"><span class="readout-label">有效</span><span class="readout-value">' + lastSummary.valid + ' / ' + lastSummary.total + ' 次</span></div>' +
             '<div class="readout-row"><span class="readout-label">抢先</span><span class="readout-value">' + lastSummary.anticipations + ' 次</span></div>' +
+            listHtml +
             '<p class="module-note">同一台设备、同样条件下的结果才可比。</p>';
+          lastResultsText = '反应时间测试：中位 ' + Math.round(lastSummary.median) + ' ms（四分位距 ' +
+            Math.round(lastSummary.q1) + '–' + Math.round(lastSummary.q3) + ' ms，最快 ' + Math.round(lastSummary.min) +
+            ' ms，最慢 ' + Math.round(lastSummary.max) + ' ms，有效 ' + lastSummary.valid + '/' + lastSummary.total + '）\n' + listText;
           note.textContent = '已完成：中位 ' + Math.round(lastSummary.median) + ' ms';
         }
         resultsEl.hidden = false;
@@ -443,9 +485,14 @@
         startBtn.textContent = '进行中…';
         againBtn.disabled = true;
         exportBtn.disabled = true;
+        copyBtn.disabled = true;
         note.textContent = '进行中：等变绿立刻点按目标';
         state.phase = '练习';
         refreshReadout();
+        /* 颜色目标就是主窗口：收起提示文字，把目标滚动到屏幕中央，
+           整个测试都在同一张卡片内完成，不开新窗口、新标签。 */
+        introEl.hidden = true;
+        try { displayEl.scrollIntoView({ block: 'center' }); } catch (ignored) {}
         jsPsych = window.initJsPsych({
           display_element: 'rt-display',
           on_trial_finish: onTrialFinish,
@@ -475,6 +522,33 @@
         document.body.removeChild(a);
         setTimeout(function () { URL.revokeObjectURL(url); }, 3000);
         SC.core.log.add('反应时间数据已导出 JSON');
+      });
+
+      copyBtn.addEventListener('click', function () {
+        if (!lastResultsText) return;
+        function done(ok) {
+          if (ok) {
+            ctx.toast({ icon: 'touch', title: '已复制', subtitle: '结果文本已复制到剪贴板' });
+            SC.core.log.add('反应时间结果已复制');
+          } else {
+            ctx.toast({ icon: 'barrier', title: '复制失败', subtitle: '请改用「导出数据 JSON」' });
+          }
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(lastResultsText).then(function () { done(true); }, function () { done(false); });
+        } else {
+          /* 旧浏览器兜底：临时文本框 + execCommand。 */
+          var ta = document.createElement('textarea');
+          ta.value = lastResultsText;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          var ok = false;
+          try { ok = document.execCommand('copy'); } catch (ignored) {}
+          document.body.removeChild(ta);
+          done(ok);
+        }
       });
 
       ctx.onCleanup(function () {
