@@ -4,7 +4,7 @@
 
 ### 🧱 把你的 iPhone，变成一座 Minecraft 风格的传感器实验室
 
-> 📱 一台手机，十五种感官，一个方块世界等你来挖。  
+> 📱 一台手机，十六种感官，一个方块世界等你来挖。  
 > 不用装 App，打开 Safari 就能开始冒险 —— 摄像头、声音、重力、方向、位置，全部变成可以玩的方块。
 
 ![iOS Safari](https://img.shields.io/badge/平台-iPhone%20Safari-00c853?style=for-the-badge)
@@ -21,7 +21,7 @@
 
 | | |
 |---|---|
-| ✅ **15 张可用 / 受限卡片** | 摄像头、麦克风、补光灯、加速度计、陀螺仪、姿态与指南针、GPS、多点触控、扬声器 / 语音、游戏手柄、屏幕常亮、WebGPU、手动相机、Face ID 信息卡、人面识别 |
+| ✅ **16 张可用 / 受限卡片** | 摄像头、麦克风、补光灯、加速度计、陀螺仪、姿态与指南针、GPS、多点触控、扬声器 / 语音、游戏手柄、屏幕常亮、WebGPU、手动相机、Face ID 信息卡、人面识别、YOLO 识别 |
 | 🔒 **12 张未解锁卡片** | 环境光、磁力计原始数据、气压计、距离传感器、LiDAR、Web Bluetooth、NFC、USB / 串口、震动、电池、HealthKit、后台运行 —— 点开会告诉你为什么锁住，以及用什么替代 |
 
 ---
@@ -45,6 +45,7 @@
 | 📸 **手动相机** | 变焦 / 曝光补偿、对焦 / 曝光 / 白平衡模式、补光灯、重置控制、复制能力 |
 | 🆔 **Face ID / Touch ID** | WebAuthn 说明、平台认证器可用性检测（不读取生物数据） |
 | 😀 **人面识别** | 摄像头实时框选人面（绿框 + 置信度 + 6 个关键点）、前后切换、置信度滑杆、拍照带框；MediaPipe BlazeFace short-range（@mediapipe/tasks-vision@0.10.14，Apache-2.0，模型约 230KB），首次需联网从 CDN 下载模型 + WASM（合计约 9.5MB，之后走浏览器缓存）；加载失败时自动回退离线肤色检测。本机运算不上传。 |
+| 🎯 **YOLO 识别** | 摄像头实时框选多类物体（彩色框 + 中文名 + 置信度）、默认后置、置信度滑杆、拍照带框；YOLO11n INT8（COCO 80 类：人、车、狗、猫、手机、椅子等，模型约 3.1MB，自托管在 `models/`），ONNX Runtime Web@1.29.0 WASM 单线程推理，首次需联网下载运行时（约 14MB），之后走浏览器缓存；YOLO 权重为 AGPL-3.0。本机运算不上传。 |
 
 > 🔒 **锁住的卡不是 Bug** —— 是浏览器 / 系统根本没给这个 API，卡片里会写清楚原因和替代方案，一键就能打开可用的替代卡片。
 
@@ -76,7 +77,7 @@ node build/build-standalone.mjs
 # 产物：dist/sensor-craft.html
 ```
 
-构建脚本把 `index.html` 引用的 CSS 与经典脚本按顺序内联。单文件产物仍然需要 HTTPS 才能使用媒体与定位；人面识别卡首次打开时需联网从 CDN 加载 MediaPipe（模型 + WASM），其余卡片不依赖第三方。
+构建脚本把 `index.html` 引用的 CSS 与经典脚本按顺序内联。单文件产物仍然需要 HTTPS 才能使用媒体与定位；人面识别卡首次打开时需联网从 CDN 加载 MediaPipe（模型 + WASM），YOLO 识别卡首次打开时需联网加载 ONNX Runtime（约 14MB）并从本站加载模型（`models/yolo11n-int8.onnx`，约 3.1MB），其余卡片不依赖第三方。
 
 ---
 
@@ -175,6 +176,7 @@ node build/build-standalone.mjs
 
 - 摄像头模块不做 rPPG 心率推断，只做画面、取色与亮度。
 - 人面识别已换成 MediaPipe BlazeFace short-range 神经网络（@mediapipe/tasks-vision@0.10.14，模型约 230KB），首次打开需联网从 CDN 下载模型 + WASM；离线或加载失败时自动回退肤色 + 几何检测（旧引擎，效果较差，读数里会写明）。BlazeFace 针对前置自拍近距离优化，侧脸、戴口罩、逆光、远处小脸仍可能漏检；后置远景想更准可考虑换 YuNet 或 BlazeFace full-range。视频只在本机处理，不上传。
+- YOLO 识别用 YOLO11n INT8（动态 INT8 量化，3.1MB，FP32 原版 10.9MB）：iPhone Safari 上 ONNX 不支持 WebGPU，只走 WASM 单线程，416×416 输入，约每 500ms 推理一次，框用 rAF 平滑绘制；远处小物体、密集遮挡时可能漏检，INT8 比 FP32 略不准（实测街景 2 辆 vs 4 辆）。YOLO 权重 AGPL-3.0，商业使用前请核对条款。
 - 页面切到后台时 Safari 会自行暂停媒体；回到前台可能需要重新点击开始。
 - 锁定卡不是 bug，是浏览器 / 系统没有提供对应 API。
 - 补光灯、手动对焦 / 曝光 / 变焦在 iPhone 上不稳定，代码做能力检测而不是假装成功。
