@@ -46,9 +46,25 @@
         text: meta.label
       });
 
+      var actions = dom.el('div', { class: 'bench-title-actions' });
+      var hasInfo = SC.core.sensorInfoData && SC.core.sensorInfoData[module.id];
+      if (hasInfo) {
+        var infoBtn = dom.el('button', {
+          class: 'mc-btn tiny',
+          type: 'button',
+          text: 'ⓘ 说明',
+          'aria-label': '查看' + module.name + '的说明'
+        });
+        infoBtn.addEventListener('click', function () {
+          SC.ui.sensorInfo.open(module.id);
+        });
+        actions.appendChild(infoBtn);
+      }
+      actions.appendChild(badge);
+
       titlebar.appendChild(back);
       titlebar.appendChild(title);
-      titlebar.appendChild(badge);
+      titlebar.appendChild(actions);
 
       var body = dom.el('div', { class: 'bench-body' });
       var stage = dom.el('div', { class: 'bench-stage', id: 'module-root' });
