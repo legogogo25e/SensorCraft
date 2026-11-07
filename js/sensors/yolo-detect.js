@@ -1,18 +1,26 @@
-/* YOLO 识别：ONNX Runtime Web + YOLO11n，多类别实时框选。
+/* YOLO 识别：ONNX Runtime Web + 可切换模型，多类别实时框选。
  *
  * 为什么是这个组合：
  * - 人面卡用 MediaPipe BlazeFace 只认脸；这张卡要认「万物」，
- *   就用 COCO 80 类的 YOLO11n（人、车、狗、猫、手机、椅子……）。
- *   YOLO11n 是 YOLOv8n 的后继，同级最轻，输入输出格式和 v8
- *   一样（[1,84,anchors]：4 个框坐标 + 80 类分数）。
- * - 模型是 Ultralytics 官方 v8.3.0 的 yolo11n.onnx（FP32，
- *   10,930,182 字节），经 onnxruntime 动态 INT8 量化后
- *   3,238,790 字节，体积少 70%，精度略降（实测：真人 0.95、
- *   狗 0.78、街景 2 辆车；FP32 同图是 0.95、0.95、4 辆车）。
- *   量化版存在 repo 的 models/yolo11n-int8.onnx，同源加载，
- *   不走 CDN、不怕 CORS。想换回 FP32 时把 MODEL_URL 改成
- *   models/yolo11n.onnx 并上传 FP32 文件即可。
- * - 许可证：YOLO11n 权重是 Ultralytics AGPL-3.0；
+ *   就用 COCO 80 类的 YOLO（人、车、狗、猫、手机、椅子……）。
+ * - 卡片工具栏里有个模型选择器，两个模型可以随时切换着对比，
+ *   选择会记在 localStorage，下次打开还是上次那个。
+ *   - YOLO26n（默认，Ultralytics 2026-01-14 发布，v8.4.0 的
+ *     yolo26n.onnx，FP32 9,941,957 字节，INT8 量化后 2,908,710
+ *     字节）：NMS-free 端到端，输出直接是 [1,300,6]（x1,y1,x2,y2,
+ *     分数,类别），不用手写 NMS；COCO mAP 40.9，比 11n 高 1.4，
+ *     CPU 快约 43%。代价：输入固定 640×640，单帧算量大。
+ *     实测（INT8，置信度 0.4）：真人 0.95、狗 0.88、街景 4 辆
+ *     车 + 1 人 + 1 红绿灯；FP32 同图是 0.96、0.92、5 车 + 2 人。
+ *   - YOLO11n（Ultralytics v8.3.0 的 yolo11n.onnx，FP32
+ *     10,930,182 字节，INT8 量化后 3,238,790 字节）：传统输出
+ *     [1,84,anchors]（4 个框坐标 + 80 类分数），要手写 NMS；
+ *     输入是动态的，这里用 416，单帧算量小所以更快。
+ *     实测（INT8，置信度 0.4）：真人 0.95、狗 0.78、街景 2 辆车；
+ *     FP32 同图是 0.95、0.95、4 辆车。
+ *   两个量化版都在 repo 的 models/ 里（yolo26n-int8.onnx、
+ *   yolo11n-int8.onnx），同源加载，不走 CDN、不怕 CORS。
+ * - 许可证：YOLO 权重都是 Ultralytics AGPL-3.0；
  *   onnxruntime-web 是 MIT。商业使用前请自行核对 AGPL 条款。
  * - 运行时：onnxruntime-web@1.29.0（固定版本），只加载
  *   WASM 专用的 ort.wasm.min.js（不含 WebGPU/JSEP 代码）：
@@ -20,11 +28,8 @@
  *   而 JSEP 在 Safari 26 上有已知严重 bug（CPU 400%+、
  *   内存暴涨），必须避开。只走 WASM；GitHub Pages 不发
  *   COOP/COEP，所以强制单线程（numThreads = 1）。首次约
- *   14MB WASM + 3.1MB 模型，之后走浏览器缓存。
- *   输入 416×416（模型输入是动态的，320/416/640 都能跑；
- *   416 是速度和远处小物体的折中，嫌慢可改成 320）。
- * - NMS 和框解码是自己写的（ORT 不帮 YOLO 做 NMS），
- *   预处理是标准 letterbox（等比缩放 + 灰边 114）。
+ *   14MB WASM + 约 3MB 模型，之后走浏览器缓存。
+ * - 预处理是标准 letterbox（等比缩放 + 灰边 114）。
  * - 全部本机运算，视频帧不上传、不保存；离开卡片即释放
  *   摄像头并释放推理会话。
  */
@@ -35,8 +40,21 @@
   var ORT_VERSION = '1.29.0';
   var ORT_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@' + ORT_VERSION + '/dist/ort.wasm.min.js';
   var ORT_WASM_URL = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@' + ORT_VERSION + '/dist/';
-  var MODEL_URL = './models/yolo11n-int8.onnx';
-  var INPUT_SIZE = 416;
+  /* 两个模型：26n 是 NMS-free 端到端（[1,300,6]），输入固定 640；
+   * 11n 是传统输出（[1,84,anchors] + 手写 NMS），输入动态，这里用 416。 */
+  var MODELS = {
+    yolo26n: { label: 'YOLO26n INT8', file: './models/yolo26n-int8.onnx', inputSize: 640, endToEnd: true, hint: '新 · 更准 · 640 输入' },
+    yolo11n: { label: 'YOLO11n INT8', file: './models/yolo11n-int8.onnx', inputSize: 416, endToEnd: false, hint: '快 · 416 输入' }
+  };
+  var MODEL_STORAGE_KEY = 'sensorcraft-yolo-model';
+  function storedModel() {
+    try {
+      var v = window.localStorage.getItem(MODEL_STORAGE_KEY);
+      if (v && MODELS[v]) return v;
+    } catch (ignored) {}
+    return 'yolo26n';
+  }
+  var MAX_INPUT_SIZE = 640;
   var DETECT_MS = 500;
   var IOU_THRESHOLD = 0.45;
   var MAX_BOXES = 10;
@@ -115,7 +133,7 @@
       '<div class="readout-row"><span class="readout-label">单次推理</span><span class="readout-value">' + state.inferMs + '</span></div>' +
       '<div class="readout-row"><span class="readout-label">镜头</span><span class="readout-value">' + (state.facing === 'user' ? '前置' : '后置') + '</span></div>' +
       '<div class="readout-row"><span class="readout-label">状态</span><span class="readout-value">' + state.status + '</span></div>' +
-      '<div class="module-note">本机运算，不上传。YOLO11n 认 COCO 80 类：人、车、狗、猫、手机、椅子等；首次需联网下载 ONNX 运行时（约 14MB）+ 模型（约 3.1MB），之后走浏览器缓存。</div>'
+      '<div class="module-note">本机运算，不上传。YOLO 认 COCO 80 类：人、车、狗、猫、手机、椅子等；首次需联网下载 ONNX 运行时（约 14MB）+ 模型（约 3MB），之后走浏览器缓存。26n 更准但输入 640、单帧慢；11n 输入 416、单帧快，工具栏可切换对比。</div>'
     );
   }
 
@@ -135,10 +153,11 @@
       return { status: 'ready' };
     },
     mount: function (ctx) {
+      var currentModel = storedModel();
       var state = {
         facing: 'environment',
         engine: '加载模型中…',
-        model: 'YOLO11n INT8',
+        model: MODELS[currentModel].label,
         count: 0,
         seen: '--',
         detFps: 0,
@@ -162,10 +181,11 @@
       var sessionFailed = false;
 
       var letterCanvas = document.createElement('canvas');
-      letterCanvas.width = INPUT_SIZE;
-      letterCanvas.height = INPUT_SIZE;
+      letterCanvas.width = MODELS[currentModel].inputSize;
+      letterCanvas.height = MODELS[currentModel].inputSize;
       var letterCtx = letterCanvas.getContext('2d', { willReadFrequently: true });
-      var inputData = new Float32Array(3 * INPUT_SIZE * INPUT_SIZE);
+      /* 按最大输入（640）分配，26n 和 11n 共用，切换模型时只改 canvas 尺寸。 */
+      var inputData = new Float32Array(3 * MAX_INPUT_SIZE * MAX_INPUT_SIZE);
 
       ctx.root.innerHTML =
         '<div class="module module-face-detect">' +
@@ -182,6 +202,12 @@
         '<div class="slider-row"><label for="yolo-sens">置信度</label>' +
         '<input type="range" id="yolo-sens" min="0.25" max="0.7" step="0.05" value="0.4">' +
         '<span class="slider-value" id="yolo-sens-val">0.40</span></div>' +
+        '<div class="slider-row"><label for="yolo-model">模型</label>' +
+        '<select class="mc-select" id="yolo-model">' +
+        '<option value="yolo26n">YOLO26n · 更准 · 640</option>' +
+        '<option value="yolo11n">YOLO11n · 更快 · 416</option>' +
+        '</select>' +
+        '<span class="slider-value" id="yolo-model-hint"></span></div>' +
         '<div class="module-toolbar">' +
         '<button class="mc-btn" type="button" id="yolo-switch">切换镜头</button>' +
         '<button class="mc-btn primary" type="button" id="yolo-shot">拍照带框</button>' +
@@ -189,7 +215,7 @@
         '<span class="spacer"></span>' +
         '<span class="module-note" id="yolo-note">正在加载 AI 模型…</span>' +
         '</div>' +
-        '<p class="module-note">默认后置镜头，对准人、车、动物、日常物品试试。YOLO11n 认 COCO 80 类，视频只在本机处理，不上传、不保存。</p>' +
+        '<p class="module-note">默认后置镜头，对准人、车、动物、日常物品试试。YOLO 认 COCO 80 类，视频只在本机处理，不上传、不保存。换模型会重新加载（约 3MB，缓存后很快），摄像头不用重开。</p>' +
         '</div>';
 
       var video = ctx.root.querySelector('#yolo-video');
@@ -204,6 +230,10 @@
       var pausedOverlay = ctx.root.querySelector('#yolo-paused');
       var sensInput = ctx.root.querySelector('#yolo-sens');
       var sensVal = ctx.root.querySelector('#yolo-sens-val');
+      var modelSelect = ctx.root.querySelector('#yolo-model');
+      var modelHint = ctx.root.querySelector('#yolo-model-hint');
+      modelSelect.value = currentModel;
+      modelHint.textContent = MODELS[currentModel].inputSize + ' 输入';
 
       function refreshReadout() {
         ctx.setReadout(readoutHtml(state));
@@ -232,33 +262,59 @@
 
       async function initSession() {
         if (session || sessionLoading || sessionFailed) return;
+        var model = MODELS[currentModel];
         sessionLoading = true;
         state.engine = '加载模型中…';
+        state.model = model.label;
         note.textContent = '正在加载 ONNX 运行时…（首次约 14MB，需联网）';
         refreshReadout();
         try {
           var ort = await loadOrtScript();
           ort.env.wasm.numThreads = 1;
           ort.env.wasm.wasmPaths = ORT_WASM_URL;
-          note.textContent = '正在加载 YOLO 模型…（约 3.1MB）';
+          note.textContent = '正在加载 ' + model.label + ' 模型…（约 3MB）';
           refreshReadout();
-          session = await ort.InferenceSession.create(MODEL_URL, { executionProviders: ['wasm'] });
+          session = await ort.InferenceSession.create(model.file, { executionProviders: ['wasm'] });
           sessionLoading = false;
           state.engine = 'ONNX Runtime Web (WASM)';
-          state.model = 'YOLO11n INT8';
-          note.textContent = '检测中：YOLO11n 已就绪';
-          SC.core.log.add('YOLO 识别模型已加载：YOLO11n INT8 (ONNX Runtime Web WASM)');
+          state.model = model.label;
+          note.textContent = '检测中：' + model.label + ' 已就绪';
+          SC.core.log.add('YOLO 识别模型已加载：' + model.label + ' (ONNX Runtime Web WASM)');
           refreshReadout();
         } catch (e) {
           sessionLoading = false;
           sessionFailed = true;
           session = null;
           state.engine = '加载失败';
-          state.model = 'YOLO11n INT8';
+          state.model = model.label;
           note.textContent = '模型加载失败：' + (e && e.message ? e.message : '请检查网络后重开卡片');
           SC.core.log.add('YOLO 模型加载失败：' + (e && e.message ? e.message : e));
           refreshReadout();
         }
+      }
+
+      /* 切换模型：释放旧会话，换输入尺寸，重载新模型；摄像头保持开启。
+       * 正在加载时不接受切换，并把下拉框拨回当前模型，避免显示和实际不一致。 */
+      function switchModel(key) {
+        if (!MODELS[key] || key === currentModel) return;
+        if (sessionLoading) { modelSelect.value = currentModel; return; }
+        try { if (session && session.release) session.release(); } catch (ignored) {}
+        session = null;
+        sessionFailed = false;
+        tracked = [];
+        state.count = 0;
+        state.seen = '--';
+        state.inferMs = '--';
+        currentModel = key;
+        letterCanvas.width = MODELS[key].inputSize;
+        letterCanvas.height = MODELS[key].inputSize;
+        modelHint.textContent = MODELS[key].inputSize + ' 输入';
+        try { window.localStorage.setItem(MODEL_STORAGE_KEY, key); } catch (ignored) {}
+        state.model = MODELS[key].label;
+        note.textContent = '正在切换到 ' + MODELS[key].label + '…';
+        SC.core.log.add('YOLO 识别切换模型：' + MODELS[key].label);
+        refreshReadout();
+        initSession();
       }
 
       function smoothBoxes(raw) {
@@ -343,23 +399,25 @@
 
       async function detectOnceInner() {
         var t0 = performance.now();
+        var model = MODELS[currentModel];
+        var size = model.inputSize;
         /* letterbox：等比缩放 + 灰边，记下缩放和偏移以便把框映射回去。 */
         var vw = video.videoWidth;
         var vh = video.videoHeight;
-        var scale = Math.min(INPUT_SIZE / vw, INPUT_SIZE / vh);
+        var scale = Math.min(size / vw, size / vh);
         var dw = vw * scale;
         var dh = vh * scale;
-        var ox = (INPUT_SIZE - dw) / 2;
-        var oy = (INPUT_SIZE - dh) / 2;
+        var ox = (size - dw) / 2;
+        var oy = (size - dh) / 2;
         letterCtx.fillStyle = '#727272';
-        letterCtx.fillRect(0, 0, INPUT_SIZE, INPUT_SIZE);
+        letterCtx.fillRect(0, 0, size, size);
         letterCtx.drawImage(video, ox, oy, dw, dh);
         var frame;
         try {
-          frame = letterCtx.getImageData(0, 0, INPUT_SIZE, INPUT_SIZE);
+          frame = letterCtx.getImageData(0, 0, size, size);
         } catch (e) { return; }
         var data = frame.data;
-        var n = INPUT_SIZE * INPUT_SIZE;
+        var n = size * size;
         for (var i = 0; i < n; i += 1) {
           var o = i * 4;
           inputData[i] = data[o] / 255;
@@ -368,7 +426,7 @@
         }
         var result;
         try {
-          var tensor = new window.ort.Tensor('float32', inputData, [1, 3, INPUT_SIZE, INPUT_SIZE]);
+          var tensor = new window.ort.Tensor('float32', inputData.subarray(0, 3 * n), [1, 3, size, size]);
           result = await session.run({ images: tensor });
         } catch (e) {
           SC.core.log.add('YOLO 推理出错：' + (e && e.message ? e.message : e));
@@ -376,34 +434,64 @@
         }
         var out = result.output0.data;
         var dims = result.output0.dims;
-        var anchors = dims[2];
         var boxes = [];
-        for (var a = 0; a < anchors; a += 1) {
-          var bestClass = -1;
-          var bestScore = 0;
-          for (var k = 0; k < 80; k += 1) {
-            var sc = out[(4 + k) * anchors + a];
-            if (sc > bestScore) { bestScore = sc; bestClass = k; }
+        if (model.endToEnd) {
+          /* YOLO26n：输出 [1,300,6]，每行 [x1,y1,x2,y2,分数,类别]，
+             坐标在 letterbox 像素空间里；模型已做过 NMS，不用再去重。 */
+          var rows = dims[1];
+          for (var r = 0; r < rows; r += 1) {
+            var base = r * 6;
+            var score = out[base + 4];
+            if (score < threshold) continue;
+            var cls = Math.round(out[base + 5]);
+            if (cls < 0 || cls >= 80) continue;
+            var x1 = (out[base] - ox) / scale / vw;
+            var y1 = (out[base + 1] - oy) / scale / vh;
+            var x2 = (out[base + 2] - ox) / scale / vw;
+            var y2 = (out[base + 3] - oy) / scale / vh;
+            boxes.push({
+              classId: cls,
+              x: Math.max(0, x1), y: Math.max(0, y1),
+              w: Math.min(1, x2) - Math.max(0, x1),
+              h: Math.min(1, y2) - Math.max(0, y1),
+              score: score
+            });
           }
-          if (bestClass < 0 || bestScore < threshold) continue;
-          var cx = out[a];
-          var cy = out[anchors + a];
-          var bw = out[2 * anchors + a];
-          var bh = out[3 * anchors + a];
-          var x1 = (cx - bw / 2 - ox) / scale / vw;
-          var y1 = (cy - bh / 2 - oy) / scale / vh;
-          var x2 = (cx + bw / 2 - ox) / scale / vw;
-          var y2 = (cy + bh / 2 - oy) / scale / vh;
-          boxes.push({
-            classId: bestClass,
-            x: Math.max(0, x1), y: Math.max(0, y1),
-            w: Math.min(1, x2) - Math.max(0, x1),
-            h: Math.min(1, y2) - Math.max(0, y1),
-            score: bestScore
-          });
+          var kept = boxes
+            .filter(function (b) { return b.w > 0.02 && b.h > 0.02; })
+            .sort(function (a, b) { return b.score - a.score; })
+            .slice(0, MAX_BOXES);
+        } else {
+          /* YOLO11n：输出 [1,84,anchors]，4 个框坐标（中心点 + 宽高）
+             + 80 类分数，要自己取每类最高分再手写 NMS 去重。 */
+          var anchors = dims[2];
+          for (var a = 0; a < anchors; a += 1) {
+            var bestClass = -1;
+            var bestScore = 0;
+            for (var k = 0; k < 80; k += 1) {
+              var sc = out[(4 + k) * anchors + a];
+              if (sc > bestScore) { bestScore = sc; bestClass = k; }
+            }
+            if (bestClass < 0 || bestScore < threshold) continue;
+            var cx = out[a];
+            var cy = out[anchors + a];
+            var bw = out[2 * anchors + a];
+            var bh = out[3 * anchors + a];
+            var x1b = (cx - bw / 2 - ox) / scale / vw;
+            var y1b = (cy - bh / 2 - oy) / scale / vh;
+            var x2b = (cx + bw / 2 - ox) / scale / vw;
+            var y2b = (cy + bh / 2 - oy) / scale / vh;
+            boxes.push({
+              classId: bestClass,
+              x: Math.max(0, x1b), y: Math.max(0, y1b),
+              w: Math.min(1, x2b) - Math.max(0, x1b),
+              h: Math.min(1, y2b) - Math.max(0, y1b),
+              score: bestScore
+            });
+          }
+          boxes = boxes.filter(function (b) { return b.w > 0.02 && b.h > 0.02; });
+          var kept = nms(boxes);
         }
-        boxes = boxes.filter(function (b) { return b.w > 0.02 && b.h > 0.02; });
-        var kept = nms(boxes);
         state.inferMs = Math.round(performance.now() - t0) + 'ms';
         detCount += 1;
         var now = performance.now();
@@ -450,7 +538,7 @@
           pausedOverlay.hidden = true;
           pauseBtn.textContent = '暂停';
           state.status = '运行中';
-          note.textContent = session ? '检测中：YOLO11n' : '检测中：模型加载中，稍后开始框选';
+          note.textContent = session ? '检测中：' + MODELS[currentModel].label : '检测中：模型加载中，稍后开始框选';
           refreshReadout();
           if (!firstFrame) {
             firstFrame = true;
@@ -496,6 +584,10 @@
       sensInput.addEventListener('input', function () {
         threshold = parseFloat(sensInput.value) || 0.4;
         sensVal.textContent = threshold.toFixed(2);
+      });
+
+      modelSelect.addEventListener('change', function () {
+        switchModel(modelSelect.value);
       });
 
       shotBtn.addEventListener('click', function () {
