@@ -8,7 +8,7 @@
 > 不用装 App，打开 Safari 就能开始冒险 —— 摄像头、声音、重力、方向、位置，全部变成可以玩的方块。
 
 ![iOS Safari](https://img.shields.io/badge/平台-iPhone%20Safari-00c853?style=for-the-badge)
-![零依赖](https://img.shields.io/badge/依赖-零第三方-ff9800?style=for-the-badge)
+![MediaPipe](https://img.shields.io/badge/人面识别-MediaPipe%20BlazeFace-ff9800?style=for-the-badge)
 ![单页应用](https://img.shields.io/badge/类型-单页%20Web%20App-7c4dff?style=for-the-badge)
 
 ---
@@ -44,7 +44,7 @@
 | ⚡ **WebGPU** | 适配器检测、高性能偏好、展开特性、复制信息 |
 | 📸 **手动相机** | 变焦 / 曝光补偿、对焦 / 曝光 / 白平衡模式、补光灯、重置控制、复制能力 |
 | 🆔 **Face ID / Touch ID** | WebAuthn 说明、平台认证器可用性检测（不读取生物数据） |
-| 😀 **人面识别** | 摄像头实时框选人面（绿框 + 置信度）、前后切换、灵敏度滑杆、肤色遮罩调试、拍照带框；三层引擎：原生 FaceDetector（仅 Chrome）→ WebGPU 肤色掩码 → CPU 肤色检测，全部本机运算不上传 |
+| 😀 **人面识别** | 摄像头实时框选人面（绿框 + 置信度 + 6 个关键点）、前后切换、置信度滑杆、拍照带框；MediaPipe BlazeFace short-range（@mediapipe/tasks-vision@0.10.14，Apache-2.0，模型约 230KB），首次需联网从 CDN 下载模型 + WASM（合计约 9.5MB，之后走浏览器缓存）；加载失败时自动回退离线肤色检测。本机运算不上传。 |
 
 > 🔒 **锁住的卡不是 Bug** —— 是浏览器 / 系统根本没给这个 API，卡片里会写清楚原因和替代方案，一键就能打开可用的替代卡片。
 
@@ -76,7 +76,7 @@ node build/build-standalone.mjs
 # 产物：dist/sensor-craft.html
 ```
 
-构建脚本把 `index.html` 引用的 CSS 与经典脚本按顺序内联，**零第三方依赖**。单文件产物仍然需要 HTTPS 才能使用媒体与定位。
+构建脚本把 `index.html` 引用的 CSS 与经典脚本按顺序内联。单文件产物仍然需要 HTTPS 才能使用媒体与定位；人面识别卡首次打开时需联网从 CDN 加载 MediaPipe（模型 + WASM），其余卡片不依赖第三方。
 
 ---
 
@@ -174,7 +174,7 @@ node build/build-standalone.mjs
 ## ⚠️ 已知限制：先说清楚，再开始玩
 
 - 摄像头模块不做 rPPG 心率推断，只做画面、取色与亮度。
-- 人面识别是轻量肤色 + 几何模型，不是 BlazeFace / YuNet 神经网络：iPhone Safari 没有 FaceDetector API，WebGPU 只负责加速肤色掩码。正脸、光线好时最稳；侧脸、口罩、逆光、肤色近背景时可能漏检或误检。想更高精度可把 `js/sensors/face-detect.js` 的 `detectFrame()` 换成 MediaPipe / ONNX 推理，框选管线不用改。
+- 人面识别已换成 MediaPipe BlazeFace short-range 神经网络（@mediapipe/tasks-vision@0.10.14，模型约 230KB），首次打开需联网从 CDN 下载模型 + WASM；离线或加载失败时自动回退肤色 + 几何检测（旧引擎，效果较差，读数里会写明）。BlazeFace 针对前置自拍近距离优化，侧脸、戴口罩、逆光、远处小脸仍可能漏检；后置远景想更准可考虑换 YuNet 或 BlazeFace full-range。视频只在本机处理，不上传。
 - 页面切到后台时 Safari 会自行暂停媒体；回到前台可能需要重新点击开始。
 - 锁定卡不是 bug，是浏览器 / 系统没有提供对应 API。
 - 补光灯、手动对焦 / 曝光 / 变焦在 iPhone 上不稳定，代码做能力检测而不是假装成功。
