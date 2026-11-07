@@ -1,0 +1,51 @@
+/* 设计令牌：颜色、字体、斜角边框、安全区、程序化像素纹理。 */
+/* SENSORCRAFT design tokens — Minecraft GUI */
+:root {
+  --bg-deepslate: #2a2a32;
+  --bg-stone: #44444c;
+  --bg-dirt: #7a4f28;
+  --panel: #d6d6d6;
+  --panel-dark: #a0a0a0;
+  --panel-darker: #808080;
+  --slot: #a4a4a4;
+  --slot-hover: #bebebe;
+  --bevel-light: #ffffff;
+  --bevel-mid: #b4b4b4;
+  --bevel-dark: #3a3a3a;
+  --text-light: #f2f2f2;
+  --text-dim: #b8b8b8;
+  --text-dark: #2f2f2f;
+  --xp-green: #7fff2a;
+  --grass: #6fbf3a;
+  --grass-dark: #3f7a2e;
+  --sky: #7fc4ff;
+  --xp-dark: #2e7d32;
+  --gold: #ffd700;
+  --gold-dark: #b8860b;
+  --redstone: #ff4d4d;
+  --redstone-dark: #8b1a1a;
+  --lapis: #4a6cff;
+  --sculk-cyan: #55ffff;
+  --sculk-dark: #1a6b7a;
+  --amethyst: #2a0a4a;
+  --amethyst-light: #7a4fd0;
+  --tooltip-bg: #100010;
+  --emerald: #17dd62;
+  --diamond: #33e0e0;
+
+  --font-pixel: "Monocraft", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --font-cjk: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+
+  --bevel-out: inset 2px 2px 0 var(--bevel-light), inset -2px -2px 0 var(--bevel-dark);
+  --bevel-in: inset 2px 2px 0 var(--bevel-dark), inset -2px -2px 0 var(--bevel-light);
+  --bevel-slot: inset 2px 2px 0 #373737, inset -2px -2px 0 #ffffff;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  --tex-stone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%232f2f33'/%3E%3Crect x='1' y='2' width='3' height='2' fill='%2335353a'/%3E%3Crect x='9' y='1' width='4' height='2' fill='%2329292d'/%3E%3Crect x='5' y='6' width='5' height='2' fill='%2335353a'/%3E%3Crect x='12' y='9' width='3' height='3' fill='%2329292d'/%3E%3Crect x='2' y='11' width='4' height='2' fill='%2335353a'/%3E%3Crect x='8' y='13' width='6' height='2' fill='%2329292d'/%3E%3Crect x='0' y='7' width='2' height='3' fill='%233a3a40'/%3E%3C/svg%3E");
+  --tex-deepslate: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%231b1b1f'/%3E%3Crect x='2' y='2' width='3' height='2' fill='%23222227'/%3E%3Crect x='10' y='1' width='4' height='2' fill='%23151518'/%3E%3Crect x='5' y='7' width='4' height='2' fill='%23222227'/%3E%3Crect x='12' y='10' width='3' height='3' fill='%23151518'/%3E%3Crect x='1' y='12' width='4' height='2' fill='%23222227'/%3E%3C/svg%3E");
+  --tex-dirt: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%236b4423'/%3E%3Crect x='2' y='1' width='3' height='2' fill='%237a4f28'/%3E%3Crect x='9' y='3' width='4' height='2' fill='%23553318'/%3E%3Crect x='4' y='7' width='3' height='2' fill='%23553318'/%3E%3Crect x='11' y='9' width='3' height='2' fill='%237a4f28'/%3E%3Crect x='1' y='12' width='4' height='2' fill='%23553318'/%3E%3Crect x='8' y='13' width='5' height='2' fill='%237a4f28'/%3E%3C/svg%3E");
+  --tex-planks: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%238b5a2b'/%3E%3Crect y='0' width='16' height='1' fill='%236b4423'/%3E%3Crect y='4' width='16' height='1' fill='%236b4423'/%3E%3Crect y='9' width='16' height='1' fill='%236b4423'/%3E%3Crect y='13' width='16' height='1' fill='%236b4423'/%3E%3Crect x='3' y='2' width='9' height='1' fill='%23a06a36'/%3E%3Crect x='6' y='6' width='8' height='1' fill='%23a06a36'/%3E%3Crect x='1' y='11' width='7' height='1' fill='%23a06a36'/%3E%3C/svg%3E");
+  --tex-obsidian: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%23100c18'/%3E%3Crect x='2' y='2' width='2' height='3' fill='%231e1730'/%3E%3Crect x='10' y='1' width='3' height='2' fill='%232a1f45'/%3E%3Crect x='5' y='8' width='3' height='2' fill='%231e1730'/%3E%3Crect x='12' y='11' width='2' height='3' fill='%232a1f45'/%3E%3Crect x='1' y='12' width='3' height='2' fill='%231e1730'/%3E%3C/svg%3E");
+}

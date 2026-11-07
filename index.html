@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2f2f33">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SENSORCRAFT">
+  <meta name="description" content="SENSORCRAFT：把 iPhone 变成 Minecraft 风格传感器实验室。">
+  <title>SENSORCRAFT · iPhone 传感器实验室</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%232f2f33'/%3E%3Crect x='3' y='3' width='2' height='2' fill='%238b8b8b'/%3E%3Crect x='5' y='3' width='2' height='2' fill='%23c6c6c6'/%3E%3Crect x='7' y='3' width='2' height='2' fill='%23c6c6c6'/%3E%3Crect x='9' y='3' width='2' height='2' fill='%238b8b8b'/%3E%3Crect x='11' y='4' width='2' height='2' fill='%238b8b8b'/%3E%3Crect x='5' y='5' width='2' height='2' fill='%238b5a2b'/%3E%3Crect x='7' y='7' width='2' height='2' fill='%238b5a2b'/%3E%3Crect x='9' y='9' width='2' height='2' fill='%238b5a2b'/%3E%3Crect x='11' y='11' width='2' height='2' fill='%236b4423'/%3E%3C/svg%3E">
+  <!-- 内嵌 Monocraft ASCII 子集（SIL OFL 1.1），无外部字体请求 -->
+  <link rel="stylesheet" href="./css/font.css">
+  <!-- 设计令牌与样式 -->
+  <link rel="stylesheet" href="./css/tokens.css">
+  <link rel="stylesheet" href="./css/base.css">
+  <link rel="stylesheet" href="./css/layout.css">
+  <link rel="stylesheet" href="./css/components.css">
+</head>
+<body>
+  <!-- 应用外壳：HUD / 背包 / 工作台 / 底部 HUD / 权限门 -->
+  <div id="app">
+    <header id="hud"></header>
+    <div id="secure-banner" hidden></div>
+    <main id="bag-view"></main>
+    <section id="bench-view" hidden aria-label="传感器工作台"></section>
+    <footer id="xp-bar" aria-label="经验值">
+      <span class="xp-level" id="xp-level">Lv.1 探索者</span>
+      <div class="xp-track"><div class="xp-fill" id="xp-fill"></div></div>
+    </footer>
+    <div id="chat-log" aria-live="polite" aria-label="事件日志"></div>
+    <div id="toast-stack" aria-live="polite" aria-label="成就"></div>
+    <div id="gate" role="dialog" aria-modal="true" aria-label="开始冒险" hidden></div>
+  </div>
+  <noscript>
+    <div style="padding:16px;color:#fff;background:#2a0f0f">SENSORCRAFT 需要 JavaScript 才能读取传感器。</div>
+  </noscript>
+
+  <!-- core：命名空间、工具、日志、上下文、探测、权限、常亮、注册表、生命周期 -->
+  <script defer src="./js/core/namespace.js"></script>
+  <script defer src="./js/core/dom.js"></script>
+  <script defer src="./js/core/format.js"></script>
+  <script defer src="./js/core/log.js"></script>
+  <script defer src="./js/core/context.js"></script>
+  <script defer src="./js/core/probe.js"></script>
+  <script defer src="./js/core/permissions.js"></script>
+  <script defer src="./js/core/wake-lock.js"></script>
+  <script defer src="./js/core/registry.js"></script>
+  <script defer src="./js/core/lifecycle.js"></script>
+
+  <!-- ui：图标、toast、HUD、背包、工作台、校准门、调试日志 -->
+  <script defer src="./js/ui/icons.js"></script>
+  <script defer src="./js/ui/toast.js"></script>
+  <script defer src="./js/ui/hud.js"></script>
+  <script defer src="./js/ui/bag.js"></script>
+  <script defer src="./js/ui/bench.js"></script>
+  <script defer src="./js/ui/gate.js"></script>
+  <script defer src="./js/ui/debug.js"></script>
+
+  <!-- sensors：每张卡片一个文件；新增卡片在这里加一行，并在 main.js 之前加载 -->
+  <script defer src="./js/sensors/locked.js"></script>
+  <script defer src="./js/sensors/camera.js"></script>
+  <script defer src="./js/sensors/microphone.js"></script>
+  <script defer src="./js/sensors/torch.js"></script>
+  <script defer src="./js/sensors/accelerometer.js"></script>
+  <script defer src="./js/sensors/gyroscope.js"></script>
+  <script defer src="./js/sensors/orientation.js"></script>
+  <script defer src="./js/sensors/geolocation.js"></script>
+  <script defer src="./js/sensors/multitouch.js"></script>
+  <script defer src="./js/sensors/speaker.js"></script>
+  <script defer src="./js/sensors/gamepad.js"></script>
+  <script defer src="./js/sensors/wakelock.js"></script>
+  <script defer src="./js/sensors/webgpu.js"></script>
+  <script defer src="./js/sensors/camera-manual.js"></script>
+  <script defer src="./js/sensors/biometrics.js"></script>
+
+  <!-- 启动 -->
+  <script defer src="./js/main.js"></script>
+</body>
+</html>

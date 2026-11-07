@@ -1,0 +1,168 @@
+/* 基础重置、世界背景、排版、焦点、滚动条和 reduced-motion。 */
+/* reset + world background + typography */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100%;
+  margin: 0;
+  background-color: var(--bg-stone);
+  background-image: linear-gradient(180deg, rgba(111, 191, 58, 0.20), transparent 240px), var(--tex-stone);
+  color: var(--text-light);
+  font-family: var(--font-cjk);
+  font-size: 14px;
+  line-height: 1.45;
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(255, 255, 255, 0.10), transparent 55%),
+    linear-gradient(180deg, transparent 45%, rgba(0, 0, 0, 0.32));
+}
+
+#app {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  padding-bottom: calc(40px + var(--safe-bottom));
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  border-radius: 0;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: var(--gold);
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
+svg {
+  display: block;
+}
+
+::selection {
+  background: var(--lapis);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.pixel {
+  font-family: var(--font-pixel);
+}
+
+.shadow-soft {
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.75);
+}
+
+.shadow-dark {
+  text-shadow: 1px 1px 0 #3f3f3f;
+}
+
+.text-dim {
+  color: var(--text-dim);
+}
+
+.text-gold {
+  color: var(--gold);
+}
+
+.text-green {
+  color: var(--xp-green);
+}
+
+.text-red {
+  color: var(--redstone);
+}
+
+.text-cyan {
+  color: var(--sculk-cyan);
+}
+
+.hidden,
+[hidden] {
+  display: none !important;
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-deepslate);
+  box-shadow: var(--bevel-in);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--panel-dark);
+  border: 2px solid var(--bg-deepslate);
+  box-shadow: inset 1px 1px 0 #c6c6c6, inset -1px -1px 0 #555;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
