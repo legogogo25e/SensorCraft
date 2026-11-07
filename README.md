@@ -1,3 +1,5 @@
+![SENSORCRAFT — iPhone Sensor Laboratory · 14 Sensors](assets/banner.png)
+
 # ⛏️ SENSORCRAFT
 
 ### 🧱 把你的 iPhone，变成一座 Minecraft 风格的传感器实验室
