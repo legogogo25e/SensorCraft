@@ -2,6 +2,20 @@
 (function (SC) {
   'use strict';
 
+  function friendlyError(error) {
+    var name = error && error.name;
+    if (name === 'NotAllowedError' || name === 'SecurityError') {
+      return '摄像头权限被拒绝。请在 Safari 的网站设置里允许摄像头，或重新点击开始。';
+    }
+    if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+      return '没有找到可用的摄像头。';
+    }
+    if (name === 'NotReadableError' || name === 'AbortError') {
+      return '摄像头被其他 App 占用，先关闭相机/视频通话再试。';
+    }
+    return (error && error.message) || '无法启动摄像头。';
+  }
+
   var MODE_LABELS = {
     none: '无',
     manual: '手动',
@@ -37,14 +51,20 @@
       ctx.root.innerHTML =
         '<div class="module module-manual">' +
         '<div class="stage-frame ratio-4x3"><video id="manual-video" autoplay playsinline muted></video>' +
-        '<div class="frame-hud"><span class="hud-chip">MANUAL</span><span class="hud-chip" id="manual-chip">检测中</span></div></div>' +
+        '<div class="frame-hud"><span class="hud-chip">MANUAL</span><span class="hud-chip" id="manual-chip">未开始</span></div>' +
+        '<div class="stage-overlay" id="manual-start"><div class="start-box">' +
+        '<div class="start-title">手动相机控制</div>' +
+        '<div class="start-text">手动调变焦、对焦、曝光、白平衡。点「开启相机」后，浏览器会申请摄像头权限，再读这台相机的真实能力；不点就不会问。</div>' +
+        '<div class="start-actions"><button class="mc-btn primary" type="button" id="manual-start-btn">开启相机</button>' +
+        '<button class="mc-btn ghost" type="button" id="manual-info-btn">先看看说明</button></div>' +
+        '</div></div></div>' +
         '<div id="manual-controls"></div>' +
         '<div class="module-toolbar">' +
-        '<button class="mc-btn danger" type="button" id="manual-stop">停止相机</button>' +
-        '<button class="mc-btn" type="button" id="manual-reset">重置控制</button>' +
-        '<button class="mc-btn" type="button" id="manual-copy">复制能力</button>' +
+        '<button class="mc-btn danger" type="button" id="manual-stop" disabled>停止相机</button>' +
+        '<button class="mc-btn" type="button" id="manual-reset" disabled>重置控制</button>' +
+        '<button class="mc-btn" type="button" id="manual-copy" disabled>复制能力</button>' +
         '<span class="spacer"></span>' +
-        '<span class="module-note" id="manual-note">读取真实的 getCapabilities()，不伪造控制。</span>' +
+        '<span class="module-note" id="manual-note">还没开始：点「开启相机」，浏览器会申请摄像头权限。</span>' +
         '</div></div>';
 
       ctx.setReadout(
@@ -54,7 +74,7 @@
           '<div class="readout-row"><span class="readout-label">曝光</span><span class="readout-value" id="manual-r-exposure">--</span></div>' +
           '<div class="readout-row"><span class="readout-label">白平衡</span><span class="readout-value" id="manual-r-wb">--</span></div>' +
           '<div class="readout-row"><span class="readout-label">补光灯</span><span class="readout-value" id="manual-r-torch">--</span></div>' +
-          '<div class="readout-row"><span class="readout-label">状态</span><span class="readout-value" id="manual-r-status">检测中</span></div>'
+          '<div class="readout-row"><span class="readout-label">状态</span><span class="readout-value" id="manual-r-status">未开始</span></div>'
       );
 
       var video = ctx.root.querySelector('#manual-video');
@@ -64,6 +84,9 @@
       var stopBtn = ctx.root.querySelector('#manual-stop');
       var resetBtn = ctx.root.querySelector('#manual-reset');
       var copyBtn = ctx.root.querySelector('#manual-copy');
+      var startOverlay = ctx.root.querySelector('#manual-start');
+      var startBtn = ctx.root.querySelector('#manual-start-btn');
+      var infoBtn = ctx.root.querySelector('#manual-info-btn');
       var stream = null;
       var track = null;
       var caps = {};
@@ -212,11 +235,28 @@
           track = stream.getVideoTracks()[0];
           video.srcObject = stream;
           await video.play().catch(function () {});
+          startOverlay.hidden = true;
+          [stopBtn, resetBtn, copyBtn].forEach(function (b) {
+            b.disabled = false;
+          });
           detect();
         } catch (error) {
-          ctx.showError(error, error && error.name);
+          if (!ctx.isActive()) return;
+          note.textContent = friendlyError(error);
+          setReadout('#manual-r-status', '失败');
+          startOverlay.hidden = false;
+          startBtn.textContent = '重新开启';
+          SC.core.log.add('手动相机启动失败：' + (error && error.name ? error.name : error));
         }
       }
+
+      /* 权限只在用户点了「开启相机」之后才申请；拒绝后留在卡里，可重新点开启再试。 */
+      startBtn.addEventListener('click', function () {
+        start();
+      });
+      infoBtn.addEventListener('click', function () {
+        SC.ui.sensorInfo.open('camera-manual');
+      });
 
       resetBtn.addEventListener('click', function () {
         if (!track) {
@@ -261,9 +301,13 @@
         note.textContent = '相机已停止。';
         setReadout('#manual-r-status', '已停止');
         ctx.setStatus('LIMITED', 'partial');
+        /* 停了之后把开始屏请回来，点「重新开启」可以再开，不用退出重进。 */
+        startOverlay.hidden = false;
+        startBtn.textContent = '重新开启';
+        [stopBtn, resetBtn, copyBtn].forEach(function (b) {
+          b.disabled = true;
+        });
       });
-
-      start();
     }
   });
 })(window.SC = window.SC || {});

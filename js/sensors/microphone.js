@@ -34,12 +34,18 @@
         '<div class="module module-mic">' +
         '<div class="stage-frame mic-stage"><canvas id="mic-canvas"></canvas>' +
         '<div class="mic-db-overlay" id="mic-db"><span class="db-value">--</span><span class="db-unit">相对 dB</span></div>' +
-        '<div class="tnt-warning" id="mic-tnt">⚠ TNT 警告</div></div>' +
+        '<div class="tnt-warning" id="mic-tnt">⚠ TNT 警告</div>' +
+        '<div class="stage-overlay" id="mic-start"><div class="start-box">' +
+        '<div class="start-title">麦克风</div>' +
+        '<div class="start-text">听声音、看波形、测主频和音名。点「开启麦克风」后，浏览器会问你要不要允许用麦克风；不点就不会问。</div>' +
+        '<div class="start-actions"><button class="mc-btn primary" type="button" id="mic-start-btn">开启麦克风</button>' +
+        '<button class="mc-btn ghost" type="button" id="mic-info-btn">先看看说明</button></div>' +
+        '</div></div></div>' +
         '<div class="slider-row"><label for="mic-gain">灵敏度</label>' +
         '<input id="mic-gain" type="range" min="0.5" max="2.5" step="0.1" value="1">' +
         '<span class="slider-value" id="mic-gain-val">1.0×</span></div>' +
         '<div class="module-toolbar">' +
-        '<button class="mc-btn" type="button" id="mic-toggle">停止</button>' +
+        '<button class="mc-btn primary" type="button" id="mic-toggle">开始</button>' +
         '<button class="mc-btn" type="button" id="mic-peak" aria-pressed="true">峰值保持</button>' +
         '<button class="mc-btn" type="button" id="mic-reset">重置峰值</button>' +
         '<span class="spacer"></span>' +
@@ -48,6 +54,9 @@
 
       var canvas = ctx.root.querySelector('#mic-canvas');
       var dbBox = ctx.root.querySelector('#mic-db');
+      var startOverlay = ctx.root.querySelector('#mic-start');
+      var startBtn = ctx.root.querySelector('#mic-start-btn');
+      var infoBtn = ctx.root.querySelector('#mic-info-btn');
       var dbValue = dbBox.querySelector('.db-value');
       var tnt = ctx.root.querySelector('#mic-tnt');
       var toggleBtn = ctx.root.querySelector('#mic-toggle');
@@ -67,7 +76,7 @@
       var holdPeak = true;
       var peakSeen = false;
       var loudSeen = false;
-      var state = { db: 0, freq: 0, note: '--', status: '启动中' };
+      var state = { db: 0, freq: 0, note: '--', status: '未开始' };
 
       ctx.setReadout(
         '<div class="readout-title"><span>声波图腾</span><span>SCULK SENSOR</span></div>' +
@@ -78,7 +87,7 @@
           '<div class="readout-cell"><span class="cell-label">峰值</span><span class="cell-value" id="mic-r-peak">--</span></div>' +
           '</div>' +
           '<div class="readout-row"><span class="readout-label">灵敏度</span><span class="readout-value" id="mic-r-gain">1.0×</span></div>' +
-          '<div class="readout-row"><span class="readout-label">状态</span><span class="readout-value" id="mic-r-status">启动中</span></div>'
+          '<div class="readout-row"><span class="readout-label">状态</span><span class="readout-value" id="mic-r-status">未开始</span></div>'
       );
 
       function setReadoutValue(id, value) {
@@ -119,6 +128,7 @@
           data = new Uint8Array(analyser.fftSize);
           freqData = new Uint8Array(analyser.frequencyBinCount);
           state.status = '采集中';
+          startOverlay.hidden = true;
           toggleBtn.textContent = '停止';
           toggleBtn.className = 'mc-btn danger';
           refresh();
@@ -126,10 +136,21 @@
         } catch (error) {
           if (!ctx.isActive()) return;
           state.status = '失败';
+          startOverlay.hidden = false;
+          startBtn.textContent = '重新开启';
           refresh();
-          ctx.showError(new Error(friendlyError(error)), error && error.name);
+          ctx.toast({ icon: 'barrier', title: '启动失败', subtitle: friendlyError(error) });
+          SC.core.log.add('麦克风启动失败：' + (error && error.name ? error.name : error));
         }
       }
+
+      /* 权限只在用户点了「开启麦克风」之后才申请；拒绝后留在卡里，可重新点开启再试。 */
+      startBtn.addEventListener('click', function () {
+        start();
+      });
+      infoBtn.addEventListener('click', function () {
+        SC.ui.sensorInfo.open('microphone');
+      });
 
       function stop() {
         if (stream) {
@@ -286,7 +307,6 @@
       ctx.interval(compute, 100);
       ctx.raf(draw);
       refresh();
-      start();
     }
   });
 })(window.SC = window.SC || {});

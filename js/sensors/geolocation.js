@@ -1,4 +1,4 @@
-/* GPS：watchPosition 轨迹、速度/海拔/里程、复制坐标、导出 GPX。只在页面打开时记录。 */
+/* GPS：watchPosition 轨迹、速度/海拔/里程、复制坐标、导出 GPX。只在用户点了「开始定位」之后才记录。 */
 (function (SC) {
   'use strict';
   var dom = SC.core.dom;

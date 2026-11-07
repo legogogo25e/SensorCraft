@@ -28,12 +28,14 @@
         '</div></div>' +
         '<div id="torch-extra"></div>' +
         '<div class="module-toolbar">' +
+        '<button class="mc-btn primary" type="button" id="torch-detect">检测补光灯</button>' +
         '<button class="mc-btn" type="button" id="torch-toggle" disabled>打开补光灯</button>' +
         '<span class="spacer"></span>' +
-        '<span class="module-note" id="torch-note">正在检测…</span>' +
+        '<span class="module-note" id="torch-note">还没开始：点「检测补光灯」，会申请摄像头权限来检测这台设备支不支持网页控制补光灯；不点就不会问。</span>' +
         '</div></div>';
 
       var icon = ctx.root.querySelector('#torch-icon');
+      var detectBtn = ctx.root.querySelector('#torch-detect');
       var toggleBtn = ctx.root.querySelector('#torch-toggle');
       var note = ctx.root.querySelector('#torch-note');
       var extra = ctx.root.querySelector('#torch-extra');
@@ -43,7 +45,7 @@
 
       ctx.setReadout(
         '<div class="readout-title"><span>萤石灯</span><span>GLOWSTONE</span></div>' +
-          '<div class="readout-row"><span class="readout-label">能力</span><span class="readout-value" id="torch-r-support">检测中</span></div>' +
+          '<div class="readout-row"><span class="readout-label">能力</span><span class="readout-value" id="torch-r-support">未检测</span></div>' +
           '<div class="readout-row"><span class="readout-label">状态</span><span class="readout-value" id="torch-r-state">--</span></div>' +
           '<div class="readout-row"><span class="readout-label">轨道</span><span class="readout-value" id="torch-r-track">--</span></div>' +
           '<div class="module-note">只有相机轨道暴露 <span class="inline-code">torch</span> 能力时，网页才能控制补光灯。iPhone Safari 通常不开放。</div>'
@@ -109,10 +111,12 @@
           }
           render();
         } catch (error) {
-          note.textContent = '无法访问摄像头，补光灯不可用。';
+          note.textContent = '无法访问摄像头，补光灯不可用。' + (error && error.name === 'NotAllowedError' ? '请在 Safari 的网站设置里允许摄像头，或重新点检测。' : '');
           setReadout('#torch-r-support', '无法检测');
           setReadout('#torch-r-track', error && error.name ? error.name : '--');
           ctx.setStatus('LIMITED', 'partial');
+          detectBtn.disabled = false;
+          detectBtn.textContent = '重新检测';
         }
       }
 
@@ -129,8 +133,14 @@
         render();
       });
 
+      /* 检测要开摄像头拿轨道，所以只在用户点了「检测补光灯」之后才跑；拒绝后留在卡里，可重新点检测再试。 */
+      detectBtn.addEventListener('click', function () {
+        detectBtn.disabled = true;
+        note.textContent = '正在检测…';
+        detect();
+      });
+
       render();
-      detect();
     }
   });
 })(window.SC = window.SC || {});

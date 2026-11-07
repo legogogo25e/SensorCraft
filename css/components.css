@@ -1801,3 +1801,38 @@ body.debug-open {
   min-height: 32px;
   white-space: nowrap;
 }
+
+/* 开启传感器前的开始屏：先讲清楚这张卡干什么、会要什么权限，等用户点了才请求。 */
+.start-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 300px;
+}
+
+.start-box .start-title {
+  font-family: var(--font-pixel);
+  font-size: 15px;
+  color: #ffffff;
+  text-shadow: 1px 1px 0 #000000;
+}
+
+.start-box .start-text {
+  font-family: var(--font-cjk);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.start-box .start-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.start-box .start-actions .mc-btn {
+  min-height: 40px;
+}

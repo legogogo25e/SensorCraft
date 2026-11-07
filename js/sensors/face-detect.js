@@ -193,12 +193,12 @@
     mount: function (ctx) {
       var state = {
         facing: 'user',
-        engine: '加载模型中…',
+        engine: '未开始',
         model: 'BlazeFace short-range',
         faces: 0,
         biggest: '--',
         detFps: 0,
-        status: '等待授权'
+        status: '未开始'
       };
       var stream = null;
       var streamGeneration = 0;
@@ -234,6 +234,12 @@
         '<canvas id="face-overlay"></canvas>' +
         '<div class="frame-corners"><span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span></div>' +
         '<div class="stage-overlay" id="face-paused" hidden>已暂停<br><span>点击「继续」重新打开摄像头</span></div>' +
+        '<div class="stage-overlay" id="face-start"><div class="start-box">' +
+        '<div class="start-title">人面识别</div>' +
+        '<div class="start-text">框出画面里的人面、标 6 个关键点。点「开启」后，先下载 AI 模型（约 9.5MB，首次需联网），再由浏览器申请摄像头权限；不点就不会问。</div>' +
+        '<div class="start-actions"><button class="mc-btn primary" type="button" id="face-start-btn">开启人面识别</button>' +
+        '<button class="mc-btn ghost" type="button" id="face-info-btn">先看看说明</button></div>' +
+        '</div></div>' +
         '</div>' +
         '<div class="frame-hud"><span class="hud-chip" id="face-res">--</span>' +
         '<span class="hud-chip"><span class="rec-dot"></span> FACE</span>' +
@@ -243,12 +249,12 @@
         '<input type="range" id="face-sens" min="0.3" max="0.8" step="0.05" value="0.5">' +
         '<span class="slider-value" id="face-sens-val">0.50</span></div>' +
         '<div class="module-toolbar">' +
-        '<button class="mc-btn" type="button" id="face-switch">切换镜头</button>' +
-        '<button class="mc-btn primary" type="button" id="face-shot">拍照带框</button>' +
-        '<button class="mc-btn" type="button" id="face-kp-btn" aria-pressed="true">显示关键点</button>' +
-        '<button class="mc-btn danger" type="button" id="face-pause">暂停</button>' +
+        '<button class="mc-btn" type="button" id="face-switch" disabled>切换镜头</button>' +
+        '<button class="mc-btn primary" type="button" id="face-shot" disabled>拍照带框</button>' +
+        '<button class="mc-btn" type="button" id="face-kp-btn" aria-pressed="true" disabled>显示关键点</button>' +
+        '<button class="mc-btn danger" type="button" id="face-pause" disabled>暂停</button>' +
         '<span class="spacer"></span>' +
-        '<span class="module-note" id="face-note">正在加载 AI 模型…</span>' +
+        '<span class="module-note" id="face-note">还没开始：点「开启」，先下载 AI 模型，再申请摄像头。</span>' +
         '</div>' +
         '<p class="module-note">MediaPipe BlazeFace：首次打开需联网下载模型 + WASM（合计约 9.5MB，之后走浏览器缓存）。视频只在本机处理，不上传、不保存。</p>' +
         '</div>';
@@ -264,8 +270,17 @@
       var kpBtn = ctx.root.querySelector('#face-kp-btn');
       var pauseBtn = ctx.root.querySelector('#face-pause');
       var pausedOverlay = ctx.root.querySelector('#face-paused');
+      var startOverlay = ctx.root.querySelector('#face-start');
+      var startBtn = ctx.root.querySelector('#face-start-btn');
+      var infoBtn = ctx.root.querySelector('#face-info-btn');
       var sensInput = ctx.root.querySelector('#face-sens');
       var sensVal = ctx.root.querySelector('#face-sens-val');
+
+      function setToolbarEnabled(enabled) {
+        [switchBtn, shotBtn, kpBtn, pauseBtn].forEach(function (b) {
+          b.disabled = !enabled;
+        });
+      }
 
       function refreshReadout() {
         ctx.setReadout(readoutHtml(state));
@@ -496,6 +511,8 @@
           await video.play().catch(function () {});
           paused = false;
           pausedOverlay.hidden = true;
+          startOverlay.hidden = true;
+          setToolbarEnabled(true);
           pauseBtn.textContent = '暂停';
           state.status = '运行中';
           note.textContent = detector ? '检测中：MediaPipe BlazeFace' : '检测中：模型加载中，稍后开始框选';
@@ -508,11 +525,22 @@
         } catch (error) {
           if (!ctx.isActive()) return;
           state.status = '失败';
-          note.textContent = '无法启动';
+          note.textContent = friendlyError(error);
+          startOverlay.hidden = false;
+          startBtn.textContent = '重新开启';
           refreshReadout();
-          ctx.showError(new Error(friendlyError(error)), error && error.name);
+          SC.core.log.add('人面识别启动失败：' + (error && error.name ? error.name : error));
         }
       }
+
+      /* 权限与模型下载只在用户点了「开启」之后才发生；拒绝后留在卡里，可重新点开启再试。 */
+      startBtn.addEventListener('click', function () {
+        initDetector();
+        start();
+      });
+      infoBtn.addEventListener('click', function () {
+        SC.ui.sensorInfo.open('face-detect');
+      });
 
       switchBtn.addEventListener('click', function () {
         state.facing = state.facing === 'environment' ? 'user' : 'environment';
@@ -586,8 +614,6 @@
         detector = null;
       });
       refreshReadout();
-      initDetector();
-      start();
     }
   });
 })(window.SC = window.SC || {});

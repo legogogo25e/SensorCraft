@@ -156,13 +156,13 @@
       var currentModel = storedModel();
       var state = {
         facing: 'environment',
-        engine: '加载模型中…',
+        engine: '未开始',
         model: MODELS[currentModel].label,
         count: 0,
         seen: '--',
         detFps: 0,
         inferMs: '--',
-        status: '等待授权'
+        status: '未开始'
       };
       var stream = null;
       var streamGeneration = 0;
@@ -194,6 +194,12 @@
         '<canvas id="yolo-overlay"></canvas>' +
         '<div class="frame-corners"><span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span></div>' +
         '<div class="stage-overlay" id="yolo-paused" hidden>已暂停<br><span>点击「继续」重新打开摄像头</span></div>' +
+        '<div class="stage-overlay" id="yolo-start"><div class="start-box">' +
+        '<div class="start-title">YOLO 识别</div>' +
+        '<div class="start-text">框出画面里的人、车、动物和日常物品（COCO 80 类）。点「开启」后，先下载 AI 模型和推理运行时（首次需联网），再由浏览器申请摄像头权限；不点就不会问。</div>' +
+        '<div class="start-actions"><button class="mc-btn primary" type="button" id="yolo-start-btn">开启 YOLO 识别</button>' +
+        '<button class="mc-btn ghost" type="button" id="yolo-info-btn">先看看说明</button></div>' +
+        '</div></div>' +
         '</div>' +
         '<div class="frame-hud"><span class="hud-chip" id="yolo-res">--</span>' +
         '<span class="hud-chip"><span class="rec-dot"></span> YOLO</span>' +
@@ -209,11 +215,11 @@
         '</select>' +
         '<span class="slider-value" id="yolo-model-hint"></span></div>' +
         '<div class="module-toolbar">' +
-        '<button class="mc-btn" type="button" id="yolo-switch">切换镜头</button>' +
-        '<button class="mc-btn primary" type="button" id="yolo-shot">拍照带框</button>' +
-        '<button class="mc-btn danger" type="button" id="yolo-pause">暂停</button>' +
+        '<button class="mc-btn" type="button" id="yolo-switch" disabled>切换镜头</button>' +
+        '<button class="mc-btn primary" type="button" id="yolo-shot" disabled>拍照带框</button>' +
+        '<button class="mc-btn danger" type="button" id="yolo-pause" disabled>暂停</button>' +
         '<span class="spacer"></span>' +
-        '<span class="module-note" id="yolo-note">正在加载 AI 模型…</span>' +
+        '<span class="module-note" id="yolo-note">还没开始：点「开启」，先下载 AI 模型，再申请摄像头。</span>' +
         '</div>' +
         '<p class="module-note">默认后置镜头，对准人、车、动物、日常物品试试。YOLO 认 COCO 80 类，视频只在本机处理，不上传、不保存。换模型会重新加载（约 3MB，缓存后很快），摄像头不用重开。</p>' +
         '</div>';
@@ -228,6 +234,15 @@
       var shotBtn = ctx.root.querySelector('#yolo-shot');
       var pauseBtn = ctx.root.querySelector('#yolo-pause');
       var pausedOverlay = ctx.root.querySelector('#yolo-paused');
+      var startOverlay = ctx.root.querySelector('#yolo-start');
+      var startBtn = ctx.root.querySelector('#yolo-start-btn');
+      var infoBtn = ctx.root.querySelector('#yolo-info-btn');
+
+      function setToolbarEnabled(enabled) {
+        [switchBtn, shotBtn, pauseBtn].forEach(function (b) {
+          b.disabled = !enabled;
+        });
+      }
       var sensInput = ctx.root.querySelector('#yolo-sens');
       var sensVal = ctx.root.querySelector('#yolo-sens-val');
       var modelSelect = ctx.root.querySelector('#yolo-model');
@@ -536,6 +551,8 @@
           await video.play().catch(function () {});
           paused = false;
           pausedOverlay.hidden = true;
+          startOverlay.hidden = true;
+          setToolbarEnabled(true);
           pauseBtn.textContent = '暂停';
           state.status = '运行中';
           note.textContent = session ? '检测中：' + MODELS[currentModel].label : '检测中：模型加载中，稍后开始框选';
@@ -548,11 +565,22 @@
         } catch (error) {
           if (!ctx.isActive()) return;
           state.status = '失败';
-          note.textContent = '无法启动';
+          note.textContent = friendlyError(error);
+          startOverlay.hidden = false;
+          startBtn.textContent = '重新开启';
           refreshReadout();
-          ctx.showError(new Error(friendlyError(error)), error && error.name);
+          SC.core.log.add('YOLO 识别启动失败：' + (error && error.name ? error.name : error));
         }
       }
+
+      /* 权限与模型下载只在用户点了「开启」之后才发生；拒绝后留在卡里，可重新点开启再试。 */
+      startBtn.addEventListener('click', function () {
+        initSession();
+        start();
+      });
+      infoBtn.addEventListener('click', function () {
+        SC.ui.sensorInfo.open('yolo-detect');
+      });
 
       switchBtn.addEventListener('click', function () {
         state.facing = state.facing === 'environment' ? 'user' : 'environment';
@@ -625,8 +653,6 @@
         session = null;
       });
       refreshReadout();
-      initSession();
-      start();
     }
   });
 })(window.SC = window.SC || {});

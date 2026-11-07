@@ -68,7 +68,7 @@
         resolution: '--',
         hex: '#000000',
         brightness: 0,
-        status: '等待授权'
+        status: '未开始'
       };
       var stream = null;
       var streamGeneration = 0;
@@ -89,15 +89,21 @@
         '<span class="hud-chip"><span class="rec-dot"></span> REC</span></div>' +
         '<div class="frame-corners"><span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span></div>' +
         '<div class="stage-overlay" id="cam-paused" hidden>已暂停<br><span>点击「继续」重新打开摄像头</span></div>' +
+        '<div class="stage-overlay" id="cam-start"><div class="start-box">' +
+        '<div class="start-title">摄像头</div>' +
+        '<div class="start-text">用前后摄像头看世界、拍照、取中心色。点「开启摄像头」后，浏览器会问你要不要允许用摄像头；不点就不会问。</div>' +
+        '<div class="start-actions"><button class="mc-btn primary" type="button" id="cam-start-btn">开启摄像头</button>' +
+        '<button class="mc-btn ghost" type="button" id="cam-info-btn">先看看说明</button></div>' +
+        '</div></div>' +
         '</div>' +
         '<div class="axis-row" style="margin-top:8px"><span class="axis-name">LIGHT</span><div class="meter"><div class="meter-fill gold" id="cam-light-bar"></div></div><span class="axis-num" id="cam-light-val">0</span></div>' +
         '<div class="module-toolbar">' +
-        '<button class="mc-btn" type="button" id="cam-switch">切换镜头</button>' +
-        '<button class="mc-btn primary" type="button" id="cam-shot">拍照</button>' +
-        '<button class="mc-btn" type="button" id="cam-copy">复制色值</button>' +
-        '<button class="mc-btn danger" type="button" id="cam-pause">暂停</button>' +
+        '<button class="mc-btn" type="button" id="cam-switch" disabled>切换镜头</button>' +
+        '<button class="mc-btn primary" type="button" id="cam-shot" disabled>拍照</button>' +
+        '<button class="mc-btn" type="button" id="cam-copy" disabled>复制色值</button>' +
+        '<button class="mc-btn danger" type="button" id="cam-pause" disabled>暂停</button>' +
         '<span class="spacer"></span>' +
-        '<span class="module-note" id="cam-note">正在申请摄像头…</span>' +
+        '<span class="module-note" id="cam-note">还没开始：点「开启摄像头」，浏览器会申请摄像头权限。</span>' +
         '</div></div>';
 
       var video = ctx.root.querySelector('#cam-video');
@@ -109,8 +115,17 @@
       var pauseBtn = ctx.root.querySelector('#cam-pause');
       var copyBtn = ctx.root.querySelector('#cam-copy');
       var pausedOverlay = ctx.root.querySelector('#cam-paused');
+      var startOverlay = ctx.root.querySelector('#cam-start');
+      var startBtn = ctx.root.querySelector('#cam-start-btn');
+      var infoBtn = ctx.root.querySelector('#cam-info-btn');
       var lightBar = ctx.root.querySelector('#cam-light-bar');
       var lightVal = ctx.root.querySelector('#cam-light-val');
+
+      function setToolbarEnabled(enabled) {
+        [switchBtn, shotBtn, copyBtn, pauseBtn].forEach(function (b) {
+          b.disabled = !enabled;
+        });
+      }
 
       function refreshReadout() {
         ctx.setReadout(readoutHtml(state));
@@ -153,6 +168,8 @@
           await video.play().catch(function () {});
           paused = false;
           pausedOverlay.hidden = true;
+          startOverlay.hidden = true;
+          setToolbarEnabled(true);
           pauseBtn.textContent = '暂停';
           state.resolution = video.videoWidth + '×' + video.videoHeight;
           state.status = '运行中';
@@ -166,11 +183,21 @@
         } catch (error) {
           if (!ctx.isActive()) return;
           state.status = '失败';
-          note.textContent = '无法启动';
+          note.textContent = friendlyError(error);
+          startOverlay.hidden = false;
+          startBtn.textContent = '重新开启';
           refreshReadout();
-          ctx.showError(new Error(friendlyError(error)), error && error.name);
+          SC.core.log.add('摄像头启动失败：' + (error && error.name ? error.name : error));
         }
       }
+
+      /* 权限只在用户点了「开启摄像头」之后才申请；拒绝后留在卡里，可重新点开启再试。 */
+      startBtn.addEventListener('click', function () {
+        start();
+      });
+      infoBtn.addEventListener('click', function () {
+        SC.ui.sensorInfo.open('camera');
+      });
 
       function sample() {
         if (!stream || !video.videoWidth) return;
@@ -290,7 +317,6 @@
 
       ctx.interval(sample, 250);
       refreshReadout();
-      start();
     }
   });
 })(window.SC = window.SC || {});
