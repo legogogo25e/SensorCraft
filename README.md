@@ -51,7 +51,7 @@
 | 📳 **震动** | 短震 100ms、长震 500ms、节奏震动（Android / 桌面 Chrome；iOS Safari 会忽略） |
 | 💡 **环境光** | 照度 lux、亮度等级（Android Chrome 需开 `chrome://flags` 的 Generic Sensor； iOS 不暴露） |
 | 😀 **人面识别** | 摄像头实时框选人面（绿框 + 置信度 + 6 个关键点）、前后切换、置信度滑杆、拍照带框；MediaPipe BlazeFace short-range（@mediapipe/tasks-vision@0.10.14，Apache-2.0，模型约 230KB），首次需联网从 CDN 下载模型 + WASM（合计约 9.5MB，之后走浏览器缓存）；加载失败时自动回退离线肤色检测。本机运算不上传。 |
-| 🎯 **YOLO 识别** | 摄像头实时框选多类物体（彩色框 + 中文名 + 置信度）、默认后置、置信度滑杆、拍照带框；工具栏可切换两个模型对比：YOLO26n INT8（默认，NMS-free 端到端，640 输入，COCO 80 类，更准，模型约 2.9MB）与 YOLO11n INT8（416 输入，单帧更快，模型约 3.1MB），均自托管在 `models/`，选择记在 localStorage；ONNX Runtime Web@1.29.0 WASM 单线程推理，首次需联网下载运行时（约 14MB），之后走浏览器缓存；YOLO 权重为 AGPL-3.0。本机运算不上传。 |
+| 🎯 **YOLO 识别** | 摄像头实时框选多类物体（彩色框 + 名字 + 置信度）、默认后置、置信度滑杆、拍照带框；工具栏可切换三个模型对比：YOLO26n INT8（默认，NMS-free 端到端，640 输入，COCO 80 类，更准，模型约 2.9MB）、YOLO11n INT8（416 输入，单帧更快，模型约 3.1MB）与 YOLOE-26n PF（prompt-free，416 输入，内置 4585 类、英文标签，FP32 模型约 14.9MB，标签含品种/部位/场景名、看起来比较「野」），均自托管在 `models/`，选择记在 localStorage；ONNX Runtime Web@1.29.0 WASM 单线程推理，首次需联网下载运行时（约 14MB），之后走浏览器缓存；YOLO 权重为 AGPL-3.0。本机运算不上传。 |
 | ⏱️ **反应时间** | 目标变绿立刻点按：3 次练习 + 15 次计分，约 45–75 秒；每次点按后都显示当次反应时间；结果报中位反应、四分位距、最快/最慢、有效次数、抢先次数，并列出全部 18 次（练习 + 计分，含作废原因），可复制结果文本或导出全部试次 JSON。15 次里有效满 12 次才有可比分数；抢先、超时 2 秒、画面卡顿、切后台都会让当次作废。点「开始」后提示收起、目标滚动到屏幕中央，整个测试都在同一张卡片内完成，不开新窗口。jsPsych 8.3.0（MIT，本地托管 UMD 构建，约 80KB）只做流程编排，计时是自订插件：刺激时刻用 requestAnimationFrame 帧时间戳定锚，端点是目标上的 pointerdown + performance.now()。不是脑健康诊断，不设年龄百分位。 |
 
 > 🔒 **锁住的卡不是 Bug** —— 是浏览器 / 系统根本没给这个 API，卡片里会写清楚原因和替代方案，一键就能打开可用的替代卡片。
@@ -88,7 +88,7 @@ node build/build-standalone.mjs
 # 产物：dist/sensor-craft.html
 ```
 
-构建脚本把 `index.html` 引用的 CSS 与经典脚本按顺序内联。单文件产物仍然需要 HTTPS 才能使用媒体与定位；人面识别卡首次打开时需联网从 CDN 加载 MediaPipe（模型 + WASM），YOLO 识别卡首次打开时需联网加载 ONNX Runtime（约 14MB）并从本站加载模型（`models/yolo26n-int8.onnx` 约 2.9MB 或 `models/yolo11n-int8.onnx` 约 3.1MB，取决于工具栏选的模型），其余卡片不依赖第三方。
+构建脚本把 `index.html` 引用的 CSS 与经典脚本按顺序内联。单文件产物仍然需要 HTTPS 才能使用媒体与定位；人面识别卡首次打开时需联网从 CDN 加载 MediaPipe（模型 + WASM），YOLO 识别卡首次打开时需联网加载 ONNX Runtime（约 14MB）并从本站加载模型（`models/yolo26n-int8.onnx` 约 2.9MB、`models/yolo11n-int8.onnx` 约 3.1MB 或 `models/yoloe-26n-pf.onnx` 约 14.9MB，取决于工具栏选的模型），其余卡片不依赖第三方。
 
 ---
 
@@ -193,7 +193,7 @@ node build/build-standalone.mjs
 
 - 摄像头模块不做 rPPG 心率推断，只做画面、取色与亮度。
 - 人面识别已换成 MediaPipe BlazeFace short-range 神经网络（@mediapipe/tasks-vision@0.10.14，模型约 230KB），首次打开需联网从 CDN 下载模型 + WASM；离线或加载失败时自动回退肤色 + 几何检测（旧引擎，效果较差，读数里会写明）。BlazeFace 针对前置自拍近距离优化，侧脸、戴口罩、逆光、远处小脸仍可能漏检；后置远景想更准可考虑换 YuNet 或 BlazeFace full-range。视频只在本机处理，不上传。
-- YOLO 识别有两个可选模型（工具栏切换，选择记在 localStorage）：YOLO26n INT8（默认，NMS-free 端到端 [1,300,6]，输入固定 640×640，COCO mAP 40.9，街景实测 4 车 + 1 人 + 1 红绿灯）和 YOLO11n INT8（传统 [1,84,anchors] + 手写 NMS，416×416 输入，街景实测 2 辆车）。iPhone Safari 上 ONNX 不支持 WebGPU，只走 WASM 单线程，约每 500ms 推理一次，框用 rAF 平滑绘制；远处小物体、密集遮挡时可能漏检，INT8 比 FP32 略不准。YOLO 权重 AGPL-3.0，商业使用前请核对条款。
+- YOLO 识别有三个可选模型（工具栏切换，选择记在 localStorage）：YOLO26n INT8（默认，NMS-free 端到端 [1,300,6]，输入固定 640×640，COCO mAP 40.9，街景实测 4 车 + 1 人 + 1 红绿灯）、YOLO11n INT8（传统 [1,84,anchors] + 手写 NMS，416×416 输入，街景实测 2 辆车）和 YOLOE-26n PF（prompt-free，[1,300,38] 只取前 6 列、mask 系数不用，416×416 输入，内置 4585 类、英文标签；Node WASM 实测约 0.8 秒/帧，bus 图 bus 0.86、人 0.82，dog 图标成品名 pomeranian 0.91；词表含品种/部位/场景名，标签偏「野」是特性；INT8 动态量化版实测反而更慢约 5.2 秒/帧，故 PF 用 FP32 约 14.9MB）。iPhone Safari 上 ONNX 不支持 WebGPU，只走 WASM 单线程，约每 500ms 推理一次，框用 rAF 平滑绘制；远处小物体、密集遮挡时可能漏检，INT8 比 FP32 略不准。YOLO 权重 AGPL-3.0，商业使用前请核对条款。
 - 页面切到后台时 Safari 会自行暂停媒体；回到前台可能需要重新点击开始。
 - 锁定卡不是 bug，是浏览器 / 系统没有提供对应 API。
 - 补光灯、手动对焦 / 曝光 / 变焦在 iPhone 上不稳定，代码做能力检测而不是假装成功。

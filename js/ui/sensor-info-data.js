@@ -279,10 +279,10 @@
       diagram: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180"><rect width="320" height="180" fill="#1b1b1f"/><rect x="30" y="40" width="70" height="100" fill="#2a2a32" stroke="#b8b8b8" stroke-width="2" shape-rendering="crispEdges"/><rect x="45" y="70" width="40" height="40" fill="#b8b8b8" shape-rendering="crispEdges"/><text x="30" y="160" fill="#f2f2f2" font-size="12" font-family="sans-serif">CPU：一次算一点</text><rect x="170" y="40" width="120" height="100" fill="#2a2a32" stroke="#7fff2a" stroke-width="2" shape-rendering="crispEdges"/><rect x="180" y="55" width="20" height="20" fill="#7fff2a" shape-rendering="crispEdges"/><rect x="205" y="55" width="20" height="20" fill="#7fff2a" shape-rendering="crispEdges"/><rect x="230" y="55" width="20" height="20" fill="#7fff2a" shape-rendering="crispEdges"/><rect x="255" y="55" width="20" height="20" fill="#7fff2a" shape-rendering="crispEdges"/><rect x="180" y="85" width="20" height="20" fill="#7fff2a" shape-rendering="crispEdges"/><rect x="205" y="85" width="20" height="20" fill="#7fff2a" shape-rendering="crispEdges"/><rect x="230" y="85" width="20" height="20" fill="#7fff2a" shape-rendering="crispEdges"/><rect x="255" y="85" width="20" height="20" fill="#7fff2a" shape-rendering="crispEdges"/><text x="170" y="160" fill="#f2f2f2" font-size="12" font-family="sans-serif">GPU：同时算很多</text></svg>'
     },
     'yolo-detect': {
-      intro: '一次看图就能认出 80 种东西的 AI 检测卡。',
+      intro: '一次看图就能认出东西的 AI 检测卡，现在有三个模型。',
       principle: [
         'YOLO 是个神经网络，看一遍图就同时猜出框的位置和里面是什么。它把图分成网格，每个格子负责自己那块有没有东西，再把重叠的框合并。',
-        '卡片用的是 YOLO26n 和 YOLO11n 两个小模型，认 COCO 数据集里的 80 类：人、车、狗、猫、手机、椅子等等。模型经过量化压缩，跑在本机，不上传照片。'
+        '卡片用的是三个小模型：YOLO26n 和 YOLO11n 认 COCO 数据集里的 80 类：人、车、狗、猫、手机、椅子等等；YOLOE-26n PF 不用打字就认内置 4585 类，但标签是英文，而且词表里还有品种、部位、场景名，所以狗可能标成 pomeranian、人可能标成 rock concert——这是 prompt-free 本身的特性。模型经过量化或 FP32 压缩，跑在本机，不上传照片。'
       ],
       uses: ['数画面里有几个人', '认出桌上的东西叫什么', '做自动拍照：看到猫就拍', '学目标检测是怎么工作的'],
       data: [

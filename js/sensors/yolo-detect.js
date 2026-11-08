@@ -18,7 +18,26 @@
  *     输入是动态的，这里用 416，单帧算量小所以更快。
  *     实测（INT8，置信度 0.4）：真人 0.95、狗 0.78、街景 2 辆车；
  *     FP32 同图是 0.95、0.95、4 辆车。
- *   两个量化版都在 repo 的 models/ 里（yolo26n-int8.onnx、
+ *   - YOLOE-26n PF（Ultralytics 8.4.207 自行导出，yoloe-26n-seg-pf.pt，
+ *     prompt-free，416 输入，FP32 15,589,855 字节）：不用打字就认
+ *     内置 4,585 类（RAM++ tag list，类名在 js/sensors/yoloe-classes.js，
+ *     与 ONNX metadata 的 names 顺序一致）。输出是分割模型端到端
+ *     的 [1,300,38]（4 个框坐标 + 分数 + 类别 + 32 个 mask 系数），
+ *     这里只解析前 6 列，mask 系数不用（不画分割轮廓）。
+ *     实测（FP32，Node onnxruntime-web@1.29.0 WASM 单线程，同一台 VM）：
+ *     416 输入约 0.8 秒/帧，bus 图：bus 0.86、人 0.82、stop sign 0.41，
+ *     dog 图：pomeranian 0.91（品种名，不叫 dog）、bobcat 0.86，
+ *     zidane 图：rock concert 0.88、jazz artist 0.87。
+ *     两个要先讲明的代价：①词表里除了物体，还有品种、部位、场景
+ *     （nose、city square、rock concert），标签看起来会比 COCO「野」，
+ *     有些框的名字不对——这是 prompt-free 本身的特性，不是 bug；
+ *     ②INT8 动态量化版实测反而更慢（同环境约 5.2 秒/帧，标签也更飘，
+ *     如 evening light 0.97），所以 PF 版刻意不上 INT8，用 FP32。
+ *     640 输入版也导过（约 1.9 秒/帧），核心检出差不多，416 更快，
+ *     所以上线的是 416。detection-only 导出试过，pf 权重装不进
+ *     yoloe-26n.yaml 的检测架构（'Sequential' object has no attribute
+ *     'in_channels'），故用 seg 导出。
+ *   三个量化版都在 repo 的 models/ 里（yolo26n-int8.onnx、
  *   yolo11n-int8.onnx），同源加载，不走 CDN、不怕 CORS。
  * - 许可证：YOLO 权重都是 Ultralytics AGPL-3.0；
  *   onnxruntime-web 是 MIT。商业使用前请自行核对 AGPL 条款。
@@ -40,11 +59,13 @@
   var ORT_VERSION = '1.29.0';
   var ORT_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@' + ORT_VERSION + '/dist/ort.wasm.min.js';
   var ORT_WASM_URL = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@' + ORT_VERSION + '/dist/';
-  /* 两个模型：26n 是 NMS-free 端到端（[1,300,6]），输入固定 640；
-   * 11n 是传统输出（[1,84,anchors] + 手写 NMS），输入动态，这里用 416。 */
+  /* 三个模型：26n 是 NMS-free 端到端（[1,300,6]），输入固定 640；
+   * 11n 是传统输出（[1,84,anchors] + 手写 NMS），输入动态，这里用 416；
+   * YOLOE-26n PF 是 prompt-free（[1,300,38]，只取前 6 列），4585 类，输入 416。 */
   var MODELS = {
-    yolo26n: { label: 'YOLO26n INT8', file: './models/yolo26n-int8.onnx', inputSize: 640, endToEnd: true, hint: '新 · 更准 · 640 输入' },
-    yolo11n: { label: 'YOLO11n INT8', file: './models/yolo11n-int8.onnx', inputSize: 416, endToEnd: false, hint: '快 · 416 输入' }
+    yolo26n: { label: 'YOLO26n INT8', file: './models/yolo26n-int8.onnx', inputSize: 640, endToEnd: true, rowWidth: 6, classCount: 80, sizeNote: '约 3MB', hint: '新 · 更准 · 640 输入' },
+    yolo11n: { label: 'YOLO11n INT8', file: './models/yolo11n-int8.onnx', inputSize: 416, endToEnd: false, rowWidth: 0, classCount: 80, sizeNote: '约 3MB', hint: '快 · 416 输入' },
+    yoloe26npf: { label: 'YOLOE-26n PF', file: './models/yoloe-26n-pf.onnx', inputSize: 416, endToEnd: true, rowWidth: 38, classCount: 4585, sizeNote: '约 15MB', hint: '认 4585 类 · 英文标签 · 416 输入' }
   };
   var MODEL_STORAGE_KEY = 'sensorcraft-yolo-model';
   function storedModel() {
@@ -101,6 +122,16 @@
     return 'hsl(' + ((classId * 47) % 360) + ', 90%, 55%)';
   }
 
+  /* 框上显示的名字：COCO 模型显示中文名；PF 模型没有中文翻译，
+   * 显示 4585 词表里的英文原名（品种、部位、场景名都会原样出现）。 */
+  function labelFor(modelKey, classId) {
+    if (modelKey === 'yoloe26npf') {
+      var names = (SC.core && SC.core.yoloePfNames) || [];
+      return names[classId] || ('class ' + classId);
+    }
+    return (CLASSES[classId] && CLASSES[classId][1]) || ('class ' + classId);
+  }
+
   /* NMS：按分数排序，同类且 IoU 超阈值的只留最高分。 */
   function nms(boxes) {
     var sorted = boxes.slice().sort(function (a, b) { return b.score - a.score; });
@@ -133,7 +164,7 @@
       '<div class="readout-row"><span class="readout-label">单次推理</span><span class="readout-value">' + state.inferMs + '</span></div>' +
       '<div class="readout-row"><span class="readout-label">镜头</span><span class="readout-value">' + (state.facing === 'user' ? '前置' : '后置') + '</span></div>' +
       '<div class="readout-row"><span class="readout-label">状态</span><span class="readout-value">' + state.status + '</span></div>' +
-      '<div class="module-note">本机运算，不上传。YOLO 认 COCO 80 类：人、车、狗、猫、手机、椅子等；首次需联网下载 ONNX 运行时（约 14MB）+ 模型（约 3MB），之后走浏览器缓存。26n 更准但输入 640、单帧慢；11n 输入 416、单帧快，工具栏可切换对比。</div>'
+      '<div class="module-note">本机运算，不上传。YOLO26n / 11n 认 COCO 80 类（中文名）；YOLOE-26n PF 认内置 4585 类（英文原名，含品种、部位、场景名，标签会比较「野」）。首次需联网下载 ONNX 运行时（约 14MB）+ 模型（26n/11n 约 3MB，PF 约 15MB），之后走浏览器缓存。26n 更准但输入 640、单帧慢；11n 输入 416、单帧快；PF 416 输入、认得最多但标签最飘，工具栏可切换对比。</div>'
     );
   }
 
@@ -196,7 +227,7 @@
         '<div class="stage-overlay" id="yolo-paused" hidden>已暂停<br><span>点击「继续」重新打开摄像头</span></div>' +
         '<div class="stage-overlay" id="yolo-start"><div class="start-box">' +
         '<div class="start-title">YOLO 识别</div>' +
-        '<div class="start-text">框出画面里的人、车、动物和日常物品（COCO 80 类）。点「开启」后，先下载 AI 模型和推理运行时（首次需联网），再由浏览器申请摄像头权限；不点就不会问。</div>' +
+        '<div class="start-text">框出画面里的人、车、动物和日常物品。YOLO26n / 11n 认 COCO 80 类（中文名）；YOLOE-26n PF 不用打字就认内置 4585 类（英文名，含品种、部位、场景，标签会比较「野」）。点「开启」后，先下载 AI 模型和推理运行时（首次需联网，PF 模型约 15MB），再由浏览器申请摄像头权限；不点就不会问。</div>' +
         '<div class="start-actions"><button class="mc-btn primary" type="button" id="yolo-start-btn">开启 YOLO 识别</button>' +
         '<button class="mc-btn ghost" type="button" id="yolo-info-btn">先看看说明</button></div>' +
         '</div></div>' +
@@ -212,6 +243,7 @@
         '<select class="mc-select" id="yolo-model">' +
         '<option value="yolo26n">YOLO26n · 更准 · 640</option>' +
         '<option value="yolo11n">YOLO11n · 更快 · 416</option>' +
+        '<option value="yoloe26npf">YOLOE-26n PF · 4585 类 · 416</option>' +
         '</select>' +
         '<span class="slider-value" id="yolo-model-hint"></span></div>' +
         '<div class="module-toolbar">' +
@@ -221,7 +253,7 @@
         '<span class="spacer"></span>' +
         '<span class="module-note" id="yolo-note">还没开始：点「开启」，先下载 AI 模型，再申请摄像头。</span>' +
         '</div>' +
-        '<p class="module-note">默认后置镜头，对准人、车、动物、日常物品试试。YOLO 认 COCO 80 类，视频只在本机处理，不上传、不保存。换模型会重新加载（约 3MB，缓存后很快），摄像头不用重开。</p>' +
+        '<p class="module-note">默认后置镜头，对准人、车、动物、日常物品试试。YOLO26n / 11n 认 COCO 80 类，视频只在本机处理，不上传、不保存。换模型会重新加载（26n/11n 约 3MB，PF 约 15MB，缓存后很快），摄像头不用重开。PF 的 4585 类标签是英文，狗可能标成品名（如 pomeranian），人可能标成场景或职业（如 rock concert），属于 prompt-free 词表的特性。</p>' +
         '</div>';
 
       var video = ctx.root.querySelector('#yolo-video');
@@ -287,7 +319,7 @@
           var ort = await loadOrtScript();
           ort.env.wasm.numThreads = 1;
           ort.env.wasm.wasmPaths = ORT_WASM_URL;
-          note.textContent = '正在加载 ' + model.label + ' 模型…（约 3MB）';
+          note.textContent = '正在加载 ' + model.label + ' 模型…（' + (model.sizeNote || '约 3MB') + '）';
           refreshReadout();
           session = await ort.InferenceSession.create(model.file, { executionProviders: ['wasm'] });
           sessionLoading = false;
@@ -391,7 +423,7 @@
           overlayCtx.moveTo(x, y + h - c); overlayCtx.lineTo(x, y + h); overlayCtx.lineTo(x + c, y + h);
           overlayCtx.moveTo(x + w - c, y + h); overlayCtx.lineTo(x + w, y + h); overlayCtx.lineTo(x + w, y + h - c);
           overlayCtx.stroke();
-          var label = CLASSES[box.classId][1] + ' · ' + Math.round(box.score * 100) + '%';
+          var label = labelFor(currentModel, box.classId) + ' · ' + Math.round(box.score * 100) + '%';
           overlayCtx.font = 'bold 13px monospace';
           var tw = overlayCtx.measureText(label).width;
           overlayCtx.fillStyle = color;
@@ -451,15 +483,18 @@
         var dims = result.output0.dims;
         var boxes = [];
         if (model.endToEnd) {
-          /* YOLO26n：输出 [1,300,6]，每行 [x1,y1,x2,y2,分数,类别]，
-             坐标在 letterbox 像素空间里；模型已做过 NMS，不用再去重。 */
+          /* 端到端输出 [1,300,W]：26n 是 W=6，每行 [x1,y1,x2,y2,分数,类别]；
+             PF 是 W=38（分割模型：后面 32 列是 mask 系数，这里不用），
+             前 6 列格式一样；坐标在 letterbox 像素空间里；模型已做过
+             NMS，不用再去重。类别上限按模型来：COCO 80，PF 4585。 */
           var rows = dims[1];
+          var stride = dims[2];
           for (var r = 0; r < rows; r += 1) {
-            var base = r * 6;
+            var base = r * stride;
             var score = out[base + 4];
             if (score < threshold) continue;
             var cls = Math.round(out[base + 5]);
-            if (cls < 0 || cls >= 80) continue;
+            if (cls < 0 || cls >= model.classCount) continue;
             var x1 = (out[base] - ox) / scale / vw;
             var y1 = (out[base + 1] - oy) / scale / vh;
             var x2 = (out[base + 2] - ox) / scale / vw;
@@ -519,7 +554,7 @@
         state.count = smoothed.length;
         var seenNames = [];
         smoothed.forEach(function (b) {
-          var name = CLASSES[b.classId][1];
+          var name = labelFor(currentModel, b.classId);
           if (seenNames.indexOf(name) === -1) seenNames.push(name);
         });
         state.seen = seenNames.length ? seenNames.join('、') : '--';
