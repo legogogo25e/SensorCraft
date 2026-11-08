@@ -122,6 +122,67 @@
     return 'hsl(' + ((classId * 47) % 360) + ', 90%, 55%)';
   }
 
+  /* hsl 转 rgb（mask 填充用，ImageData 要数值三元组）。 */
+  function hslToRgb(h, s, l) {
+    var c = (1 - Math.abs(2 * l - 1)) * s;
+    var x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    var m = l - c / 2;
+    var r = 0, g = 0, b = 0;
+    if (h < 60) { r = c; g = x; }
+    else if (h < 120) { r = x; g = c; }
+    else if (h < 180) { g = c; b = x; }
+    else if (h < 240) { g = x; b = c; }
+    else if (h < 300) { r = x; b = c; }
+    else { r = c; b = x; }
+    return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+  }
+
+  /* 实例分割 mask：PF 模型的输出里每行后 32 列是 mask 系数，
+   * output1 是 32 张原型（proto，416 输入时是 104×104）。
+   * mask = sigmoid(系数 · 原型)，阈值 0.5 等价于点积 > 0。
+   * 只算框内那块原型像素，返回一块只覆盖框的小 canvas；
+   * 没有任何像素过阈值就返回 null（不画）。 */
+  function computeMaskCanvas(box, proto, protoW, protoH, inputSize) {
+    if (!box.coeffs) return null;
+    var scale = protoW / inputSize;
+    var px1 = Math.max(0, Math.floor(box.lx1 * scale));
+    var py1 = Math.max(0, Math.floor(box.ly1 * scale));
+    var px2 = Math.min(protoW, Math.ceil(box.lx2 * scale));
+    var py2 = Math.min(protoH, Math.ceil(box.ly2 * scale));
+    var w = px2 - px1;
+    var h = py2 - py1;
+    if (w <= 0 || h <= 0) return null;
+    var canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    var c2d = canvas.getContext('2d');
+    var img = c2d.createImageData(w, h);
+    var data = img.data;
+    var rgb = hslToRgb((box.classId * 47) % 360, 0.9, 0.55);
+    var filled = 0;
+    for (var y = 0; y < h; y += 1) {
+      var py = py1 + y;
+      for (var x = 0; x < w; x += 1) {
+        var px = px1 + x;
+        var v = 0;
+        for (var c = 0; c < 32; c += 1) {
+          v += box.coeffs[c] * proto[(c * protoH + py) * protoW + px];
+        }
+        if (v > 0) {
+          var o = (y * w + x) * 4;
+          data[o] = rgb[0];
+          data[o + 1] = rgb[1];
+          data[o + 2] = rgb[2];
+          data[o + 3] = 255;
+          filled += 1;
+        }
+      }
+    }
+    if (!filled) return null;
+    c2d.putImageData(img, 0, 0);
+    return canvas;
+  }
+
   /* 框上显示的名字：COCO 模型显示中文名；PF 模型没有中文翻译，
    * 显示 4585 词表里的英文原名（品种、部位、场景名都会原样出现）。 */
   function labelFor(modelKey, classId) {
@@ -198,6 +259,11 @@
       var stream = null;
       var streamGeneration = 0;
       var paused = false;
+      /* 轮廓开关：只在 PF（分割）模型下有数据，26n/11n 开了也没轮廓；
+       * 默认关，选择记在 localStorage，跟模型选择一样跨次打开保留。 */
+      var MASK_STORAGE_KEY = 'sensorcraft-yolo-mask';
+      var maskEnabled = false;
+      try { maskEnabled = window.localStorage.getItem(MASK_STORAGE_KEY) === '1'; } catch (ignored) {}
       var threshold = 0.4;
       var tracked = [];
       var nextTrackId = 1;
@@ -250,10 +316,11 @@
         '<button class="mc-btn" type="button" id="yolo-switch" disabled>切换镜头</button>' +
         '<button class="mc-btn primary" type="button" id="yolo-shot" disabled>拍照带框</button>' +
         '<button class="mc-btn danger" type="button" id="yolo-pause" disabled>暂停</button>' +
+        '<button class="mc-btn" type="button" id="yolo-mask">轮廓：关</button>' +
         '<span class="spacer"></span>' +
         '<span class="module-note" id="yolo-note">还没开始：点「开启」，先下载 AI 模型，再申请摄像头。</span>' +
         '</div>' +
-        '<p class="module-note">默认后置镜头，对准人、车、动物、日常物品试试。YOLO26n / 11n 认 COCO 80 类，视频只在本机处理，不上传、不保存。换模型会重新加载（26n/11n 约 3MB，PF 约 15MB，缓存后很快），摄像头不用重开。PF 的 4585 类标签是英文，狗可能标成品名（如 pomeranian），人可能标成场景或职业（如 rock concert），属于 prompt-free 词表的特性。</p>' +
+        '<p class="module-note">默认后置镜头，对准人、车、动物、日常物品试试。YOLO26n / 11n 认 COCO 80 类，视频只在本机处理，不上传、不保存。换模型会重新加载（26n/11n 约 3MB，PF 约 15MB，缓存后很快），摄像头不用重开。PF 的 4585 类标签是英文，狗可能标成品名（如 pomeranian），人可能标成场景或职业（如 rock concert），属于 prompt-free 词表的特性。「轮廓」开关只在 PF 模型下有效：开后在框里填一层半透明轮廓（实例分割 mask），26n / 11n 没有 mask 数据，开了也不会画。</p>' +
         '</div>';
 
       var video = ctx.root.querySelector('#yolo-video');
@@ -265,7 +332,12 @@
       var switchBtn = ctx.root.querySelector('#yolo-switch');
       var shotBtn = ctx.root.querySelector('#yolo-shot');
       var pauseBtn = ctx.root.querySelector('#yolo-pause');
+      var maskBtn = ctx.root.querySelector('#yolo-mask');
       var pausedOverlay = ctx.root.querySelector('#yolo-paused');
+
+      function refreshMaskButton() {
+        maskBtn.textContent = maskEnabled ? '轮廓：开' : '轮廓：关';
+      }
       var startOverlay = ctx.root.querySelector('#yolo-start');
       var startBtn = ctx.root.querySelector('#yolo-start-btn');
       var infoBtn = ctx.root.querySelector('#yolo-info-btn');
@@ -384,10 +456,11 @@
               y: best.y + (box.y - best.y) * 0.5,
               w: best.w + (box.w - best.w) * 0.5,
               h: best.h + (box.h - best.h) * 0.5,
-              score: box.score, lastSeen: now
+              score: box.score, lastSeen: now,
+              mask: box.mask || best.mask
             });
           } else {
-            next.push({ id: nextTrackId++, classId: box.classId, x: box.x, y: box.y, w: box.w, h: box.h, score: box.score, lastSeen: now });
+            next.push({ id: nextTrackId++, classId: box.classId, x: box.x, y: box.y, w: box.w, h: box.h, score: box.score, lastSeen: now, mask: box.mask });
           }
         });
         tracked.forEach(function (t) {
@@ -411,6 +484,12 @@
           var w = box.w * overlay.width;
           var h = box.h * overlay.height;
           var color = colorFor(box.classId);
+          /* 轮廓画在框线下面：半透明填充，框和标签压在上面，字不糊。 */
+          if (box.mask) {
+            overlayCtx.globalAlpha = 0.35;
+            overlayCtx.drawImage(box.mask, x, y, w, h);
+            overlayCtx.globalAlpha = 1;
+          }
           overlayCtx.strokeStyle = color;
           overlayCtx.lineWidth = 3;
           overlayCtx.strokeRect(x, y, w, h);
@@ -499,12 +578,21 @@
             var y1 = (out[base + 1] - oy) / scale / vh;
             var x2 = (out[base + 2] - ox) / scale / vw;
             var y2 = (out[base + 3] - oy) / scale / vh;
+            /* PF（分割）模型每行后 32 列是 mask 系数：先存下来，
+             * 框留下来之后再跟 output1 的原型算轮廓；26n stride=6 没有系数。 */
+            var coeffs = null;
+            if (stride > 6) {
+              coeffs = [];
+              for (var ci = 0; ci < 32; ci += 1) coeffs.push(out[base + 6 + ci]);
+            }
             boxes.push({
               classId: cls,
               x: Math.max(0, x1), y: Math.max(0, y1),
               w: Math.min(1, x2) - Math.max(0, x1),
               h: Math.min(1, y2) - Math.max(0, y1),
-              score: score
+              score: score,
+              lx1: out[base], ly1: out[base + 1], lx2: out[base + 2], ly2: out[base + 3],
+              coeffs: coeffs
             });
           }
           var kept = boxes
@@ -541,6 +629,16 @@
           }
           boxes = boxes.filter(function (b) { return b.w > 0.02 && b.h > 0.02; });
           var kept = nms(boxes);
+        }
+        /* 轮廓开关开着、且是 PF（分割）模型时：用本帧的 mask 系数 +
+         * output1 原型（[1,32,H,W]，416 输入时 104×104）算每个框的轮廓。
+         * 26n/11n 没有 output1，kept 里也不会带 coeffs，不会走到这里。 */
+        if (maskEnabled && currentModel === 'yoloe26npf' && result.output1) {
+          var proto = result.output1.data;
+          var pDims = result.output1.dims;
+          kept.forEach(function (b) {
+            b.mask = computeMaskCanvas(b, proto, pDims[3], pDims[2], size);
+          });
         }
         state.inferMs = Math.round(performance.now() - t0) + 'ms';
         detCount += 1;
@@ -644,6 +742,22 @@
         }
       });
 
+      /* 轮廓开关：随时可点，状态记 localStorage；开着但当前模型不是 PF 时
+       * 提示一句（开关保持开着，切到 PF 就直接生效，不用再点一次）。 */
+      maskBtn.addEventListener('click', function () {
+        maskEnabled = !maskEnabled;
+        try { window.localStorage.setItem(MASK_STORAGE_KEY, maskEnabled ? '1' : '0'); } catch (ignored) {}
+        refreshMaskButton();
+        if (maskEnabled && currentModel !== 'yoloe26npf') {
+          ctx.toast({ icon: 'yolo', title: '当前模型没有轮廓数据', subtitle: '切到 YOLOE-26n PF 才有实例分割轮廓' });
+        }
+        if (!maskEnabled) {
+          tracked.forEach(function (t) { t.mask = null; });
+          overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
+        }
+        SC.core.log.add('YOLO 轮廓' + (maskEnabled ? '已开启' : '已关闭'));
+      });
+
       sensInput.addEventListener('input', function () {
         threshold = parseFloat(sensInput.value) || 0.4;
         sensVal.textContent = threshold.toFixed(2);
@@ -687,6 +801,7 @@
         try { if (session && session.release) session.release(); } catch (ignored) {}
         session = null;
       });
+      refreshMaskButton();
       refreshReadout();
     }
   });

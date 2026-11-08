@@ -282,7 +282,7 @@
       intro: '一次看图就能认出东西的 AI 检测卡，现在有三个模型。',
       principle: [
         'YOLO 是个神经网络，看一遍图就同时猜出框的位置和里面是什么。它把图分成网格，每个格子负责自己那块有没有东西，再把重叠的框合并。',
-        '卡片用的是三个小模型：YOLO26n 和 YOLO11n 认 COCO 数据集里的 80 类：人、车、狗、猫、手机、椅子等等；YOLOE-26n PF 不用打字就认内置 4585 类，但标签是英文，而且词表里还有品种、部位、场景名，所以狗可能标成 pomeranian、人可能标成 rock concert——这是 prompt-free 本身的特性。模型经过量化或 FP32 压缩，跑在本机，不上传照片。'
+        '卡片用的是三个小模型：YOLO26n 和 YOLO11n 认 COCO 数据集里的 80 类：人、车、狗、猫、手机、椅子等等；YOLOE-26n PF 不用打字就认内置 4585 类，但标签是英文，而且词表里还有品种、部位、场景名，所以狗可能标成 pomeranian、人可能标成 rock concert——这是 prompt-free 本身的特性。模型经过量化或 FP32 压缩，跑在本机，不上传照片。PF 还是个分割模型：它除了给每个物体画框，还会输出轮廓（mask）；点「轮廓」开关，就能在框里填一层半透明轮廓，26n 和 11n 没有轮廓数据，开了也不会画。'
       ],
       uses: ['数画面里有几个人', '认出桌上的东西叫什么', '做自动拍照：看到猫就拍', '学目标检测是怎么工作的'],
       data: [
@@ -293,7 +293,7 @@
         { field: '检测速度', unit: '/ 秒', meaning: '一秒能检测多少帧', example: '3' },
         { field: '单次推理', unit: 'ms', meaning: '模型看一帧图要花多少毫秒', example: '280' }
       ],
-      tryIt: '把后置镜头对着教室，调低置信度滑杆，看框怎么变多。',
+      tryIt: '切到 YOLOE-26n PF，点「轮廓」开关，看框里的物体怎么被半透明轮廓盖住；再切回 YOLO26n，看开关开了也没轮廓。',
       diagram: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180"><rect width="320" height="180" fill="#1b1b1f"/><rect x="20" y="20" width="200" height="140" fill="#2a2a32" shape-rendering="crispEdges"/><line x1="86" y1="20" x2="86" y2="160" stroke="#4a6cff" stroke-width="1" opacity="0.5"/><line x1="153" y1="20" x2="153" y2="160" stroke="#4a6cff" stroke-width="1" opacity="0.5"/><line x1="20" y1="66" x2="220" y2="66" stroke="#4a6cff" stroke-width="1" opacity="0.5"/><line x1="20" y1="113" x2="220" y2="113" stroke="#4a6cff" stroke-width="1" opacity="0.5"/><rect x="40" y="50" width="60" height="70" fill="none" stroke="#7fff2a" stroke-width="2" shape-rendering="crispEdges"/><rect x="40" y="38" width="52" height="14" fill="#7fff2a" shape-rendering="crispEdges"/><text x="42" y="49" fill="#1b1b1f" font-size="11" font-family="sans-serif">人 0.95</text><rect x="130" y="90" width="50" height="50" fill="none" stroke="#ff4d4d" stroke-width="2" shape-rendering="crispEdges"/><rect x="130" y="78" width="52" height="14" fill="#ff4d4d" shape-rendering="crispEdges"/><text x="132" y="89" fill="#1b1b1f" font-size="11" font-family="sans-serif">狗 0.88</text><text x="230" y="60" fill="#f2f2f2" font-size="12" font-family="sans-serif">网格分块</text><text x="230" y="85" fill="#b8b8b8" font-size="11" font-family="sans-serif">一次看完全图</text></svg>'
     },
     'ambient-light': {
