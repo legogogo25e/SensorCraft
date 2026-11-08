@@ -24,18 +24,18 @@
     'biometrics': {
       intro: '网页拿不到你的脸和指纹，只能请系统帮忙验证一下。',
       principle: [
-        '脸和指纹存在手机的安全区里，JavaScript 碰不到。网页只能向系统发一个请求：请验证一下这个人。系统用 Face ID 或 Touch ID 比对，通过就回一个通过，不通过就回不通过。',
+        '脸和指纹存在手机的安全区里，JavaScript 碰不到。网页只能向系统发一个请求：请验证一下这个人。系统用指纹或面部识别比对，通过就回一个通过，不通过就回不通过。',
         '网页永远看不到你的脸长什么样，也拿不到指纹图像。用来登录网站的这套标准叫 WebAuthn，俗称通行密钥。它只能做认证，不能做采集。'
       ],
       uses: ['网站免密码登录', '付款前确认是你本人', '重要操作的二次验证', '解锁 App 时代替输密码'],
       data: [
         { field: '生物数据', unit: '—', meaning: '脸或指纹的原始数据，网页永远读不到', example: '不可读取' },
         { field: '系统认证', unit: '—', meaning: '网页能用的认证标准', example: 'WebAuthn' },
-        { field: '平台', unit: '—', meaning: '存生物特征的手机安全区', example: 'iOS Secure Enclave' },
-        { field: '平台认证器', unit: '—', meaning: '这台手机能不能用 Face ID 做网页认证', example: '可用（Face ID）' },
+        { field: '平台', unit: '—', meaning: '存生物特征的手机安全区', example: '系统安全区' },
+        { field: '平台认证器', unit: '—', meaning: '这台手机能不能用指纹或面部解锁做网页认证', example: '可用（平台认证器）' },
         { field: '状态', unit: '—', meaning: '这张卡是说明卡，不做测量', example: '信息卡' }
       ],
-      tryIt: '点检测平台认证器，看这台手机能不能用 Face ID 登录网站。',
+      tryIt: '点检测平台认证器，看这台手机能不能用指纹或面部解锁登录网站。',
       diagram: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180"><rect width="320" height="180" fill="#1b1b1f"/><rect x="40" y="20" width="90" height="140" fill="#2a2a32" shape-rendering="crispEdges"/><circle cx="85" cy="70" r="26" fill="none" stroke="#7fff2a" stroke-width="2"/><circle cx="76" cy="66" r="3" fill="#7fff2a"/><circle cx="94" cy="66" r="3" fill="#7fff2a"/><path d="M76 80 Q85 88 94 80" stroke="#7fff2a" stroke-width="2" fill="none"/><line x1="130" y1="90" x2="195" y2="90" stroke="#ff4d4d" stroke-width="3"/><polygon points="195,90 183,83 183,97" fill="#ff4d4d"/><rect x="200" y="60" width="70" height="60" fill="#2a2a32" stroke="#ffd700" stroke-width="2" shape-rendering="crispEdges"/><circle cx="235" cy="85" r="10" fill="none" stroke="#ffd700" stroke-width="2"/><rect x="230" y="90" width="10" height="14" fill="#ffd700" shape-rendering="crispEdges"/><text x="40" y="175" fill="#f2f2f2" font-size="12" font-family="sans-serif">脸和指纹锁在安全区</text><text x="200" y="140" fill="#b8b8b8" font-size="11" font-family="sans-serif">网页只拿到</text><text x="200" y="158" fill="#b8b8b8" font-size="11" font-family="sans-serif">通过 / 不通过</text></svg>'
     },
     'camera-manual': {
@@ -300,16 +300,16 @@
       intro: '测周围有多亮的传感器，手机靠它自动调屏幕亮度。',
       principle: [
         '环境光传感器一般是光敏二极管，光越强产生的电流越大，手机据此调屏幕亮度。天黑自动变暗，太阳下自动变亮，就是它在工作。',
-        '网页没有稳定的接口读它，所以这张卡锁住了。想近似判断环境光，可以用摄像头卡片看亮度。'
+        '有接口的浏览器可以直接读照度：iOS 读不到，Android Chrome 要先在 chrome://flags 打开 Generic Sensor 实验特性。'
       ],
       uses: ['自动调屏幕亮度', '天黑了省电', '测教室亮度够不够', '做光照实验'],
       data: [
         { field: '照度', unit: 'lux', meaning: '照到表面的光有多强', example: '300' },
-        { field: '色温', unit: 'K', meaning: '光偏黄还是偏白，数字越大越白', example: '5500' },
-        { field: '亮度等级', unit: '—', meaning: '按照度分的亮暗等级', example: '室内明亮' }
+        { field: '亮度等级', unit: '—', meaning: '按照度分的亮暗等级', example: '室内明亮' },
+        { field: '状态', unit: '—', meaning: '传感器现在是不是在测量', example: '测量中' }
       ],
-      tryIt: '去摄像头卡片看亮度那一格，近似判断现在环境有多亮。',
-      note: 'iOS Safari 不暴露环境光传感器，Android Chrome 也要手动打开实验特性，网页才读得到。',
+      tryIt: '点「开始测量」，把手机拿到亮处和暗处，看照度读数怎么变。',
+      note: 'iOS 不暴露环境光传感器；Android Chrome 需在 chrome://flags 打开 Generic Sensor 实验特性，网页才读得到。',
       diagram: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180"><rect width="320" height="180" fill="#1b1b1f"/><circle cx="70" cy="60" r="25" fill="#ffd700"/><line x1="70" y1="25" x2="70" y2="15" stroke="#ffd700" stroke-width="3"/><line x1="70" y1="95" x2="70" y2="105" stroke="#ffd700" stroke-width="3"/><line x1="35" y1="60" x2="25" y2="60" stroke="#ffd700" stroke-width="3"/><line x1="105" y1="60" x2="115" y2="60" stroke="#ffd700" stroke-width="3"/><line x1="110" y1="75" x2="190" y2="100" stroke="#ffd700" stroke-width="2" stroke-dasharray="4 3"/><rect x="200" y="90" width="80" height="50" fill="#2a2a32" stroke="#7fc4ff" stroke-width="2" shape-rendering="crispEdges"/><text x="30" y="140" fill="#f2f2f2" font-size="12" font-family="sans-serif">越亮电流越大</text><text x="200" y="160" fill="#f2f2f2" font-size="12" font-family="sans-serif">光敏二极管</text></svg>'
     },
     'magnetometer': {
@@ -383,86 +383,85 @@
     'bluetooth': {
       intro: '短距离无线技术，手机用它连耳机、手表和传感器。',
       principle: [
-        '蓝牙是短距离无线技术，手机用它连耳机、手表和各种传感器。网页有个 Web Bluetooth 接口，但 iOS Safari 没实现，所以网页连不上蓝牙设备。',
-        '要连得用原生 App，或者让设备先把数据发到服务器中转。'
+        '蓝牙是短距离无线技术，手机用它连耳机、手表和各种传感器。网页有个 Web Bluetooth 接口，但 iOS Safari 没实现；桌面和 Android Chrome 可以直接连。',
+        '连上之后先看到设备提供的服务列表，每种服务有一个 UUID；想读心率等具体数值，要在扫描时声明对应的服务。'
       ],
       uses: ['连心率带测心率', '连 Arduino 做实验', '连耳机听歌', '做物联网小制作'],
       data: [
         { field: '设备', unit: '—', meaning: '连上的蓝牙设备叫什么', example: '心率带' },
-        { field: '信号强度', unit: 'dBm', meaning: '蓝牙信号强不强，数字越接近 0 越强', example: '-60' },
-        { field: '电量', unit: '%', meaning: '蓝牙设备的剩余电量', example: '80' },
-        { field: '心率', unit: 'bpm', meaning: '心率带测到的一分钟心跳次数', example: '72' }
+        { field: '设备 ID', unit: '—', meaning: '浏览器给这台设备编的唯一编号', example: 'a1b2c3…' },
+        { field: '服务', unit: '—', meaning: '设备提供的服务 UUID 列表', example: '0x180d' },
+        { field: '状态', unit: '—', meaning: '现在连上没有、在读服务还是已断开', example: '已连接' }
       ],
-      tryIt: '用原生 App 连一次心率带，看心率数字怎么跳。',
-      note: 'iOS Safari 不支持 Web Bluetooth，网页不能直接连接心率带或 Arduino。',
+      tryIt: '点「扫描设备」，连一台蓝牙设备，看它的服务列表。',
+      note: 'iOS Safari 不支持 Web Bluetooth；桌面 / Android Chrome 有 API 时直接用本卡。',
       diagram: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180"><rect width="320" height="180" fill="#1b1b1f"/><rect x="30" y="50" width="80" height="90" fill="#2a2a32" stroke="#f2f2f2" stroke-width="2" shape-rendering="crispEdges"/><path d="M170 40 L200 90 L170 140 M185 65 L155 115 M185 115 L155 65" stroke="#4a6cff" stroke-width="3" fill="none"/><rect x="220" y="70" width="70" height="30" fill="#ff4d4d" shape-rendering="crispEdges"/><text x="30" y="160" fill="#f2f2f2" font-size="12" font-family="sans-serif">手机</text><text x="220" y="130" fill="#f2f2f2" font-size="12" font-family="sans-serif">心率带</text><text x="130" y="160" fill="#b8b8b8" font-size="11" font-family="sans-serif">短距离无线</text></svg>'
     },
     'nfc': {
       intro: '碰一碰就通信的技术，距离只有几厘米。',
       principle: [
         'NFC 是碰一碰就通信的技术，距离只有几厘米。手机靠近卡片或标签，电磁感应让标签通电，回传一小段数据。',
-        '门禁卡、交通卡、碰一碰付款都是它。iOS Safari 没给网页用 NFC 的接口，所以这张卡锁住了。'
+        '门禁卡、交通卡、碰一碰付款都是它。iOS Safari 没给网页用 NFC 的接口，Android Chrome 可以直接扫公开的 NDEF 标签。'
       ],
       uses: ['门禁卡开门', '交通卡刷卡', '碰一碰付款', '读商品标签'],
       data: [
         { field: '标签 ID', unit: '—', meaning: '每张标签唯一的编号', example: '04:A1:2B:3C' },
-        { field: '类型', unit: '—', meaning: '这张标签是干什么用的', example: '交通卡' },
-        { field: '距离', unit: 'cm', meaning: '手机离标签有多远，太远读不到', example: '3' },
-        { field: '数据', unit: '—', meaning: '标签里存的一小段内容', example: '一小段文字' }
+        { field: '记录数', unit: '条', meaning: '这张标签里有几条 NDEF 记录', example: '1' },
+        { field: '文本记录', unit: '—', meaning: '标签里存的文字或链接内容', example: '一小段文字' },
+        { field: '状态', unit: '—', meaning: '现在是不是在扫描、有没有读到标签', example: '扫描中…' }
       ],
-      tryIt: '拿交通卡碰一下手机背面，看看系统有什么反应。',
-      note: 'iOS Safari 不支持 Web NFC。',
+      tryIt: '点「开始扫描」，把手机背面靠近一张 NFC 标签。',
+      note: 'iOS Safari 不支持 Web NFC；Android Chrome 有 API 时直接用本卡。',
       diagram: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180"><rect width="320" height="180" fill="#1b1b1f"/><rect x="40" y="40" width="80" height="100" fill="#2a2a32" stroke="#7fff2a" stroke-width="2" shape-rendering="crispEdges"/><rect x="200" y="60" width="80" height="50" fill="#ffd700" shape-rendering="crispEdges"/><path d="M130 70 Q145 85 130 100" stroke="#33e0e0" stroke-width="2" fill="none"/><path d="M140 60 Q165 85 140 110" stroke="#33e0e0" stroke-width="2" fill="none"/><text x="40" y="160" fill="#f2f2f2" font-size="12" font-family="sans-serif">碰一碰</text><text x="200" y="130" fill="#f2f2f2" font-size="12" font-family="sans-serif">几厘米才行</text><text x="130" y="40" fill="#b8b8b8" font-size="11" font-family="sans-serif">电磁感应传数据</text></svg>'
     },
     'serial': {
       intro: '最简单的有线通信，Arduino 靠它和电脑说话。',
       principle: [
         '串口是最简单的有线通信：一次传一位，慢慢传。Arduino 和 micro:bit 都用串口和电脑说话，把传感器读数传回来。',
-        '桌面 Chrome 有 Web Serial 接口，iPhone 上没有，所以这张卡在手机上锁住了。'
+        '桌面 Chrome 有 Web Serial 接口，iPhone 上没有；有接口时点「选择串口」，选一个设备就能直接读数据。'
       ],
       uses: ['连 Arduino 读传感器', '给单片机烧程序', '做机器人', '调硬件时看它发回来的数据'],
       data: [
+        { field: '端口', unit: '—', meaning: '设备接在哪个口上', example: 'USB 0x2341' },
         { field: '波特率', unit: 'bps', meaning: '一秒钟传多少位，传多快', example: '9600' },
-        { field: '数据', unit: '—', meaning: '设备发回来的一行读数', example: '温度 25.3' },
-        { field: '端口', unit: '—', meaning: '设备接在哪个口上', example: 'USB' },
-        { field: '状态', unit: '—', meaning: '串口现在连上没有', example: '已连接' }
+        { field: '状态', unit: '—', meaning: '串口现在连上没有', example: '已连接' },
+        { field: '最近数据', unit: '—', meaning: '设备刚发回来的一段读数', example: '温度 25.3' }
       ],
-      tryIt: '在电脑 Chrome 上连一次 Arduino，看串口监视器里的数据。',
-      note: 'iOS 不支持 Web Serial，桌面 Chrome 可以连接 Arduino 或 micro:bit。',
+      tryIt: '在电脑 Chrome 上点「选择串口」，连一次 Arduino，看它发回来的数据。',
+      note: 'iOS 不支持 Web Serial；桌面 Chrome 有 API 时直接用本卡。',
       diagram: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180"><rect width="320" height="180" fill="#1b1b1f"/><rect x="30" y="50" width="90" height="60" fill="#2a2a32" stroke="#b8b8b8" stroke-width="2" shape-rendering="crispEdges"/><rect x="40" y="60" width="70" height="40" fill="#4a6cff" opacity="0.4" shape-rendering="crispEdges"/><line x1="120" y1="80" x2="170" y2="80" stroke="#ffd700" stroke-width="3"/><rect x="170" y="55" width="90" height="50" fill="#6fbf3a" shape-rendering="crispEdges"/><circle cx="185" cy="70" r="3" fill="#1b1b1f"/><circle cx="205" cy="70" r="3" fill="#1b1b1f"/><circle cx="225" cy="70" r="3" fill="#1b1b1f"/><circle cx="245" cy="70" r="3" fill="#1b1b1f"/><text x="30" y="130" fill="#f2f2f2" font-size="12" font-family="sans-serif">电脑</text><text x="170" y="130" fill="#f2f2f2" font-size="12" font-family="sans-serif">Arduino</text><text x="120" y="40" fill="#b8b8b8" font-size="11" font-family="sans-serif">一次传一位</text></svg>'
     },
     'vibration': {
       intro: '手机里的小马达，网页在 iPhone 上叫不动它。',
       principle: [
-        '手机里有个小马达，转起来偏心就震。网页有个 Vibration 接口，可以叫马达震几毫秒，但 iOS Safari 直接忽略这个调用。',
-        '想在 iPhone 上用震动反馈，得用原生 App。'
+        '手机里有个小马达，转起来偏心就震。网页有个 Vibration 接口，可以叫马达震几毫秒，桌面和 Android Chrome 可以直接用；但 iOS Safari 直接忽略这个调用。',
+        '网页只能控制震多久、停多久，调不了震动的强度。'
       ],
       uses: ['按键反馈：点一下震一下', '来电提醒', '游戏里的震动', '做提醒实验'],
       data: [
-        { field: '震动时长', unit: 'ms', meaning: '一次震动持续多久', example: '200' },
-        { field: '强度', unit: '%', meaning: '马达转得多猛', example: '80' },
-        { field: '模式', unit: '—', meaning: '震和停的节奏', example: '震-停-震' },
-        { field: '状态', unit: '—', meaning: '网页的震动请求有没有被执行', example: '已忽略' }
+        { field: '支持', unit: '—', meaning: '当前浏览器支不支持震动接口', example: '支持' },
+        { field: '上次模式', unit: '—', meaning: '上一次点的是短震、长震还是节奏震动', example: '短震 100ms' },
+        { field: '调用结果', unit: '—', meaning: '上一次震动请求有没有被执行', example: '已执行' }
       ],
-      tryIt: '用原生 App 试一次震动，再回来想想网页为什么叫不动它。',
-      note: 'iOS Safari 会忽略 Vibration API。',
+      tryIt: '点「短震」和「节奏震动」，感受两种震动有什么不同。',
+      note: 'iOS Safari 会忽略 Vibration API；桌面 / Android Chrome 有 API 时直接用本卡。',
       diagram: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180"><rect width="320" height="180" fill="#1b1b1f"/><rect x="110" y="30" width="100" height="120" fill="#2a2a32" stroke="#f2f2f2" stroke-width="2" shape-rendering="crispEdges"/><circle cx="160" cy="90" r="16" fill="#ffd700"/><circle cx="160" cy="90" r="6" fill="#1b1b1f"/><path d="M95 70 Q80 90 95 110" stroke="#ff4d4d" stroke-width="2" fill="none"/><path d="M225 70 Q240 90 225 110" stroke="#ff4d4d" stroke-width="2" fill="none"/><text x="110" y="170" fill="#f2f2f2" font-size="12" font-family="sans-serif">偏心马达转起来</text><text x="60" y="20" fill="#b8b8b8" font-size="11" font-family="sans-serif">网页叫不动它</text></svg>'
     },
     'battery': {
       intro: '电池电量是系统管的，网页在 iPhone 上问不到。',
       principle: [
-        '电池电量是系统管的，网页有个 Battery Status 接口可以问电量和充不充电，但 iOS Safari 不提供。',
-        '看电量只能看状态栏，或者用原生 App 和快捷指令。'
+        '电池电量是系统管的，网页有个 Battery Status 接口可以问电量和充不充电；iOS Safari 不提供，桌面和 Android Chrome 可以直接读。',
+        '网页只能读电量和充放电状态，读不到电池健康度；健康度要看系统设置。'
       ],
       uses: ['省电提醒：电量低了少玩游戏', '做耗电实验：哪个 App 最费电', '看充电状态', '做续航测试'],
       data: [
         { field: '电量', unit: '%', meaning: '电池还剩多少', example: '82' },
         { field: '充电状态', unit: '—', meaning: '现在是不是在充电', example: '充电中' },
-        { field: '剩余时间', unit: '分钟', meaning: '充满大概还要多久', example: '45' },
-        { field: '健康度', unit: '%', meaning: '电池现在最多能充到新电池的几成', example: '95' }
+        { field: '充满时间', unit: '分钟', meaning: '充满大概还要多久，不充电时是横线', example: '45' },
+        { field: '可用时间', unit: '分钟', meaning: '按现在电量大概还能用多久，充电时是横线', example: '320' }
       ],
-      tryIt: '看一眼状态栏的电量，再想想网页为什么读不到它。',
-      note: 'iOS Safari 不提供 Battery Status API。',
+      tryIt: '点「刷新电量」，看电量和充电状态。',
+      note: 'iOS Safari 不提供 Battery Status API；桌面 / Android Chrome 有 API 时直接用本卡。',
       diagram: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180"><rect width="320" height="180" fill="#1b1b1f"/><rect x="50" y="60" width="180" height="60" fill="none" stroke="#f2f2f2" stroke-width="3" shape-rendering="crispEdges"/><rect x="55" y="65" width="140" height="50" fill="#7fff2a" shape-rendering="crispEdges"/><rect x="230" y="75" width="12" height="30" fill="#f2f2f2" shape-rendering="crispEdges"/><text x="55" y="145" fill="#f2f2f2" font-size="12" font-family="sans-serif">电量 82%</text><text x="180" y="145" fill="#f2f2f2" font-size="12" font-family="sans-serif">充电中</text><text x="50" y="40" fill="#b8b8b8" font-size="11" font-family="sans-serif">系统管着，网页问不到</text></svg>'
     },
     'healthkit': {

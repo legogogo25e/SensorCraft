@@ -1,20 +1,8 @@
-/* 12 张未解锁卡：解释为什么拿不到、替代方案，并可直接打开可用的替代卡片。 */
+/* 6 张未解锁卡：解释为什么拿不到、替代方案，并可直接打开可用的替代卡片。 */
 (function (SC) {
   'use strict';
 
   var LOCKED = [
-    {
-      id: 'ambient-light',
-      name: '环境光传感器',
-      en: 'AMBIENT LIGHT',
-      icon: 'ambientLight',
-      alternative: 'camera',
-      reason: 'iOS Safari 不暴露环境光传感器。Android Chrome 也需要手动打开实验特性。',
-      alternatives: [
-        '用摄像头卡片取色和亮度，近似判断环境光。',
-        '用屏幕亮度、时间和天气做粗略估计。'
-      ]
-    },
     {
       id: 'magnetometer',
       name: '磁力计原始数据',
@@ -52,54 +40,13 @@
       alternatives: ['用原生 App 与 ARKit。', '用双摄/视差做非常粗略的测距实验，不保证准确。']
     },
     {
-      id: 'bluetooth',
-      name: 'Web Bluetooth',
-      en: 'BLUETOOTH',
-      icon: 'bluetooth',
-      reason: 'iOS Safari 不支持 Web Bluetooth，网页不能直接连接心率带或 Arduino。',
-      alternatives: ['用原生 App 或桥接 App。', '用 ESP32 WebSocket 网关，把蓝牙数据转发到网页。']
-    },
-    {
-      id: 'nfc',
-      name: 'NFC',
-      en: 'NFC',
-      icon: 'nfc',
-      reason: 'iOS Safari 不支持 Web NFC。',
-      alternatives: ['用原生 App。', '用二维码或链接代替碰一碰。']
-    },
-    {
-      id: 'serial',
-      name: 'USB / 串口',
-      en: 'WEB SERIAL',
-      icon: 'serial',
-      reason: 'iOS 不支持 Web Serial。桌面 Chrome 可以连接 Arduino/micro:bit。',
-      alternatives: ['在电脑 Chrome 上做串口实验。', '用 ESP32 WebSocket 把串口数据发到手机网页。']
-    },
-    {
-      id: 'vibration',
-      name: '震动反馈',
-      en: 'VIBRATION',
-      icon: 'vibration',
-      alternative: 'speaker',
-      reason: 'iOS Safari 会忽略 Vibration API。',
-      alternatives: ['用画面闪烁、声音或音调做反馈。', '用原生 App 调触觉引擎。']
-    },
-    {
-      id: 'battery',
-      name: '电池电量',
-      en: 'BATTERY',
-      icon: 'battery',
-      reason: 'iOS Safari 不提供 Battery Status API。',
-      alternatives: ['看系统状态栏。', '用原生 App 或快捷指令读取。']
-    },
-    {
       id: 'healthkit',
       name: 'HealthKit / 步数',
       en: 'HEALTHKIT',
       icon: 'heart',
       alternative: 'accelerometer',
-      reason: '健康数据需要原生 App 和用户授权，网页拿不到。',
-      alternatives: ['用加速度计卡片做近似计步。', '用「健康」App 或 Apple Watch 的数据。']
+      reason: '健康数据存在系统健康服务里（iOS 叫 HealthKit，Android 叫 Health Connect），需要原生 App 和用户授权，网页拿不到。',
+      alternatives: ['用加速度计卡片做近似计步。', '用系统「健康」App 或手表的数据。']
     },
     {
       id: 'background',
@@ -160,7 +107,7 @@
             '<div class="readout-row"><span class="readout-label">替代卡片</span><span class="readout-value">' +
             (altModule ? altModule.name : '无') +
             '</span></div>' +
-            '<div class="readout-row"><span class="readout-label">原因</span><span class="readout-value">iOS 网页 API 限制</span></div>'
+            '<div class="readout-row"><span class="readout-label">原因</span><span class="readout-value">浏览器 / 系统未提供该 API</span></div>'
         );
         if (altModule) {
           var toolbar = document.createElement('div');

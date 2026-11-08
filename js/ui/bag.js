@@ -40,7 +40,7 @@
       h1.appendChild(dom.el('span', { class: 'splash', text: SPLASH[Math.floor(Math.random() * SPLASH.length)] }));
       titleText.appendChild(h1);
       titleText.appendChild(
-        dom.el('div', { class: 'inv-sub', text: 'iPhone 传感器实验室 · 点开物品槽开始实验' })
+        dom.el('div', { class: 'inv-sub', text: '传感器实验室 · 点开物品槽开始实验' })
       );
       title.appendChild(titleText);
 

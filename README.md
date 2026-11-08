@@ -1,13 +1,13 @@
-![SENSORCRAFT — iPhone Sensor Laboratory · 14 Sensors](banner.png)
+![SENSORCRAFT — Sensor Laboratory · 23 Sensors](banner.png)
 
 # ⛏️ SENSORCRAFT
 
-### 🧱 把你的 iPhone，变成一座 Minecraft 风格的传感器实验室
+### 🧱 把你的手机，变成一座 Minecraft 风格的传感器实验室
 
-> 📱 一台手机，十六种感官，一个方块世界等你来挖。  
-> 不用装 App，打开 Safari 就能开始冒险 —— 摄像头、声音、重力、方向、位置，全部变成可以玩的方块。
+> 📱 一台手机，二十多种感官，一个方块世界等你来挖。  
+> 不用装 App，打开浏览器就能开始冒险 —— 摄像头、声音、重力、方向、位置，全部变成可以玩的方块。
 
-![iOS Safari](https://img.shields.io/badge/平台-iPhone%20Safari-00c853?style=for-the-badge)
+![iPhone + Android](https://img.shields.io/badge/平台-iPhone%20%2B%20Android-00c853?style=for-the-badge)
 ![MediaPipe](https://img.shields.io/badge/人面识别-MediaPipe%20BlazeFace-ff9800?style=for-the-badge)
 ![单页应用](https://img.shields.io/badge/类型-单页%20Web%20App-7c4dff?style=for-the-badge)
 
@@ -15,18 +15,18 @@
 
 ## 🎮 这是什么？
 
-**SENSORCRAFT** 是一个单页 Web App，把 iPhone 藏起来的传感器全部挖出来，做成一张张 Minecraft 风格的卡片。
+**SENSORCRAFT** 是一个单页 Web App，把手机藏起来的传感器全部挖出来，做成一张张 Minecraft 风格的卡片。iPhone 和 Android 都能用：同一套网页，浏览器支持什么就开什么卡，不支持就老实告诉你。
 
 每张卡片都先**探测**、再**渲染**：浏览器不支持就老实告诉你，不会假装能用；离开卡片时，摄像头、麦克风、传感器监听和动画循环都会自动释放，绝不偷偷在后台跑。
 
 | | |
 |---|---|
-| ✅ **17 张可用 / 受限卡片** | 摄像头、麦克风、补光灯、加速度计、陀螺仪、姿态与指南针、GPS、多点触控、扬声器 / 语音、游戏手柄、屏幕常亮、WebGPU、手动相机、Face ID 信息卡、人面识别、YOLO 识别、反应时间 |
-| 🔒 **12 张未解锁卡片** | 环境光、磁力计原始数据、气压计、距离传感器、LiDAR、Web Bluetooth、NFC、USB / 串口、震动、电池、HealthKit、后台运行 —— 点开会告诉你为什么锁住，以及用什么替代 |
+| ✅ **23 张可用 / 受限卡片** | 摄像头、麦克风、补光灯、加速度计、陀螺仪、姿态与指南针、GPS、多点触控、扬声器 / 语音、游戏手柄、屏幕常亮、WebGPU、手动相机、Face ID 信息卡、人面识别、YOLO 识别、反应时间、Web Bluetooth、USB / 串口、NFC、电池、震动、环境光 |
+| 🔒 **6 张未解锁卡片** | 磁力计原始数据、气压计、距离传感器、LiDAR、HealthKit / Health Connect、后台运行 —— 点开会告诉你为什么锁住，以及用什么替代 |
 
 ---
 
-## ✨ 十七张卡片，一张比一张好玩
+## ✨ 二十三张卡片，一张比一张好玩
 
 | 卡片 | 能玩什么 |
 |---|---|
@@ -43,14 +43,20 @@
 | 💡 **屏幕常亮** | 拉杆开关、状态、自动重新申请 |
 | ⚡ **WebGPU** | 适配器检测、高性能偏好、展开特性、复制信息 |
 | 📸 **手动相机** | 变焦 / 曝光补偿、对焦 / 曝光 / 白平衡模式、补光灯、重置控制、复制能力 |
-| 🆔 **Face ID / Touch ID** | WebAuthn 说明、平台认证器可用性检测（不读取生物数据） |
+| 🆔 **Face ID / Touch ID** | WebAuthn 说明、平台认证器可用性检测（不读取生物数据）；平台安全区按系统显示（iOS Secure Enclave / Android Keystore / TEE） |
+| 📶 **Web Bluetooth** | 扫描设备、连接、列出服务 UUID（Android / 桌面 Chrome；iOS Safari 不支持） |
+| 🔌 **USB / 串口** | 选择串口、波特率 9600、实时读回设备数据（桌面 Chrome；iOS / Android 不支持） |
+| 📡 **NFC** | 开始扫描、读标签 ID 和文本记录（Android Chrome；iOS Safari 不支持） |
+| 🔋 **电池** | 电量 %、充电状态、充满 / 可用时间（Android / 桌面 Chrome；iOS Safari 不支持） |
+| 📳 **震动** | 短震 100ms、长震 500ms、节奏震动（Android / 桌面 Chrome；iOS Safari 会忽略） |
+| 💡 **环境光** | 照度 lux、亮度等级（Android Chrome 需开 `chrome://flags` 的 Generic Sensor； iOS 不暴露） |
 | 😀 **人面识别** | 摄像头实时框选人面（绿框 + 置信度 + 6 个关键点）、前后切换、置信度滑杆、拍照带框；MediaPipe BlazeFace short-range（@mediapipe/tasks-vision@0.10.14，Apache-2.0，模型约 230KB），首次需联网从 CDN 下载模型 + WASM（合计约 9.5MB，之后走浏览器缓存）；加载失败时自动回退离线肤色检测。本机运算不上传。 |
 | 🎯 **YOLO 识别** | 摄像头实时框选多类物体（彩色框 + 中文名 + 置信度）、默认后置、置信度滑杆、拍照带框；工具栏可切换两个模型对比：YOLO26n INT8（默认，NMS-free 端到端，640 输入，COCO 80 类，更准，模型约 2.9MB）与 YOLO11n INT8（416 输入，单帧更快，模型约 3.1MB），均自托管在 `models/`，选择记在 localStorage；ONNX Runtime Web@1.29.0 WASM 单线程推理，首次需联网下载运行时（约 14MB），之后走浏览器缓存；YOLO 权重为 AGPL-3.0。本机运算不上传。 |
 | ⏱️ **反应时间** | 目标变绿立刻点按：3 次练习 + 15 次计分，约 45–75 秒；每次点按后都显示当次反应时间；结果报中位反应、四分位距、最快/最慢、有效次数、抢先次数，并列出全部 18 次（练习 + 计分，含作废原因），可复制结果文本或导出全部试次 JSON。15 次里有效满 12 次才有可比分数；抢先、超时 2 秒、画面卡顿、切后台都会让当次作废。点「开始」后提示收起、目标滚动到屏幕中央，整个测试都在同一张卡片内完成，不开新窗口。jsPsych 8.3.0（MIT，本地托管 UMD 构建，约 80KB）只做流程编排，计时是自订插件：刺激时刻用 requestAnimationFrame 帧时间戳定锚，端点是目标上的 pointerdown + performance.now()。不是脑健康诊断，不设年龄百分位。 |
 
 > 🔒 **锁住的卡不是 Bug** —— 是浏览器 / 系统根本没给这个 API，卡片里会写清楚原因和替代方案，一键就能打开可用的替代卡片。
 
-> 📖 **每张卡都有说明** —— 打开任意卡片，点标题栏的「ⓘ 说明」，会弹出这张卡的教学卡：原理（中学生能读懂的短句）、用途、数据结构表（字段 / 单位 / 含义 / 例子，与卡片右侧「数据」栏一致）、一幅手绘 SVG 示意圖，以及「试一试」。29 张卡全有（17 张可用 + 12 张未解锁，未解锁的还会讲「为什么网页拿不到」）。内容在 `js/ui/sensor-info-data.js`，弹窗在 `js/ui/sensor-info.js`；Esc / 点遮罩 / 点 ✕ 都只关弹窗，不关工作台。
+> 📖 **每张卡都有说明** —— 打开任意卡片，点标题栏的「ⓘ 说明」，会弹出这张卡的教学卡：原理（中学生能读懂的短句）、用途、数据结构表（字段 / 单位 / 含义 / 例子，与卡片右侧「数据」栏一致）、一幅手绘 SVG 示意圖，以及「试一试」。29 张卡全有（23 张可用 + 6 张未解锁，未解锁的还会讲「为什么网页拿不到」）。内容在 `js/ui/sensor-info-data.js`，弹窗在 `js/ui/sensor-info.js`；Esc / 点遮罩 / 点 ✕ 都只关弹窗，不关工作台。
 
 > 🔐 **权限只在你点了「开启」之后才要** —— 摄像头、麦克风、人面识别、YOLO 识别、手动相机、补光灯这 6 张卡，进卡时先出现一个开始屏：讲清楚这张卡干什么、会要什么权限，点了「开启」才会向浏览器申请权限（人面识别和 YOLO 还会在这时才下载 AI 模型）。GPS、加速度计、陀螺仪、姿态与指南针本来就是点了开始按钮才申请。拒绝后不会把你踢回背包，开始屏会回来，点「重新开启」可以再试。
 
@@ -67,11 +73,11 @@ python3 -m http.server 8000
 # 打开 http://localhost:8000
 ```
 
-### 📱 在 iPhone 上实测
+### 📱 在手机上实测
 
 1. 把整个文件夹部署到任意 HTTPS 静态托管（GitHub Pages、Netlify、Cloudflare Pages 都可以）
-2. 用 Safari 打开，点「开始冒险」完成运动 / 姿态授权
-3. 打开卡片时，再按需允许摄像头、麦克风、定位
+2. 用 iPhone Safari 或 Android Chrome 打开，点「开始冒险」完成运动 / 姿态授权（Android 不用这一步）
+3. 打开卡片时，再按需允许摄像头、麦克风、定位、蓝牙、串口、NFC
 
 ---
 
@@ -148,18 +154,24 @@ node build/build-standalone.mjs
 
 ## 📊 支持矩阵（简表）
 
-| 能力 | iPhone Safari | 说明 |
-|---|---|---|
-| 摄像头 / 麦克风 | ✅（HTTPS） | 需用户授权 |
-| 加速度计 / 陀螺仪 / 姿态 | ✅（需手势授权） | iOS 13+ |
-| GPS | ✅（HTTPS） | 页面打开时有效 |
-| 多点触控 | ✅ | Pointer Events |
-| 音调 / TTS | ✅ | 语音识别在 iOS 常返回 `service-not-allowed`，已做降级提示 |
-| 游戏手柄 | ⚠️ | 系统蓝牙连接后按任意键 |
-| 屏幕常亮 | ✅（iOS 16.4+） | 需要 HTTPS |
-| WebGPU | ⚠️（iOS 26+） | 可能需实验特性 |
-| 补光灯 / 手动相机 | ⚠️ | iOS 通常不开放 |
-| 环境光 / 气压计 / LiDAR / NFC / 蓝牙 / 串口 / 电池 / 后台 | ❌ | 见锁定卡说明 |
+| 能力 | iPhone Safari | Android Chrome | 说明 |
+|---|---|---|---|
+| 摄像头 / 麦克风 | ✅（HTTPS） | ✅（HTTPS） | 需用户授权 |
+| 加速度计 / 陀螺仪 / 姿态 | ✅（需手势授权） | ✅（无需授权） | iOS 13+ 才要手势授权 |
+| GPS | ✅（HTTPS） | ✅（HTTPS） | 页面打开时有效 |
+| 多点触控 | ✅ | ✅ | Pointer Events |
+| 音调 / TTS | ✅ | ✅ | 语音识别：iOS 常返回 `service-not-allowed`，已做降级提示；Android 直接可用 |
+| 游戏手柄 | ⚠️ | ✅ | 系统蓝牙连接后按任意键 |
+| 屏幕常亮 | ✅（iOS 16.4+） | ✅ | 需要 HTTPS |
+| WebGPU | ⚠️（iOS 26+） | ✅ | iOS 可能需实验特性 |
+| 补光灯 / 手动相机 | ⚠️ | ✅ | iOS 通常不开放变焦 / 对焦 / 曝光，Android 支持更好 |
+| Web Bluetooth | ❌ | ✅ | iOS Safari 不支持 Web Bluetooth |
+| USB / 串口 | ❌ | ❌ | 桌面 Chrome 支持；手机两边都不支持 |
+| NFC | ❌ | ✅ | iOS Safari 不支持 Web NFC |
+| 电池 | ❌ | ✅ | iOS Safari 不提供 Battery Status API |
+| 震动 | ❌ | ✅ | iOS Safari 会忽略 Vibration API |
+| 环境光 | ❌ | ⚠️ | iOS 不暴露；Android 需在 `chrome://flags` 打开 Generic Sensor 实验特性 |
+| 磁力计原始数据 / 气压计 / 距离传感器 / LiDAR / HealthKit / 后台 | ❌ | ❌ | 见锁定卡说明；健康数据 iOS 叫 HealthKit、Android 叫 Health Connect，网页都拿不到 |
 
 ---
 

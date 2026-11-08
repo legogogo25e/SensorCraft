@@ -2,6 +2,29 @@
 (function (SC) {
   'use strict';
 
+  function isIOS() {
+    return /iP(hone|ad|od)/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }
+
+  function isAndroid() {
+    return /Android/i.test(navigator.userAgent);
+  }
+
+  /* 安全区的名字按平台显示：iOS 是 Secure Enclave，Android 是 Keystore / TEE。 */
+  function platformName() {
+    if (isIOS()) return 'iOS Secure Enclave';
+    if (isAndroid()) return 'Android Keystore / TEE';
+    return '系统安全区';
+  }
+
+  /* 检测结果里的人名按平台显示。 */
+  function authLabel() {
+    if (isIOS()) return 'Face ID/Touch ID';
+    if (isAndroid()) return '指纹 / 面部解锁';
+    return '平台认证器';
+  }
+
   SC.registerSensor({
     id: 'biometrics',
     name: 'Face ID / Touch ID',
@@ -20,8 +43,8 @@
         '<div class="info-panel">' +
         '<div class="info-head"><div class="info-icon">' +
         SC.ui.icons.biometrics +
-        '</div><div><h3>村民交易台</h3><p>Face ID / Touch ID 在网页里的真实边界</p></div></div>' +
-        '<p class="module-note">浏览器不会把脸、指纹或 Secure Enclave 里的模板交给 JavaScript。网页能做的只有：调用系统认证流程，拿到一个「通过 / 不通过」的结果。</p>' +
+        '</div><div><h3>村民交易台</h3><p>生物识别在网页里的真实边界</p></div></div>' +
+        '<p class="module-note">浏览器不会把脸、指纹或安全区里的模板交给 JavaScript。网页能做的只有：调用系统认证流程，拿到一个「通过 / 不通过」的结果。</p>' +
         '<div class="readout-grid">' +
         '<div class="readout-cell"><span class="cell-label">读取生物数据</span><span class="cell-value warn-text">不可能</span></div>' +
         '<div class="readout-cell"><span class="cell-label">系统登录认证</span><span class="cell-value ok-text">可用（需 WebAuthn）</span></div>' +
@@ -31,21 +54,21 @@
         '<div class="reason-box"><strong>为什么不能读？</strong> 生物特征属于系统安全区。网页只能请求「验证一下这个人」，不能请求「把脸的数据给我」。这是设计上的隔离，不是权限没开。</div>' +
         '<ul class="alt-list">' +
         '<li>可以做：网站登录、支付确认、二次验证（WebAuthn / Passkeys）。</li>' +
-        '<li>不可以做：读取指纹图像、读取 Face ID 深度图、做本地人脸识别。</li>' +
+        '<li>不可以做：读取指纹图像、读取人脸深度图、做本地人脸识别。</li>' +
         '<li>替代方案：如果要采集人脸做实验，用摄像头模块，但不要做身份认证或医疗判断。</li>' +
         '</ul>' +
         '<div class="module-toolbar">' +
         '<button class="mc-btn" type="button" id="bio-more">查看 WebAuthn 说明</button>' +
         '<button class="mc-btn primary" type="button" id="bio-check">检测平台认证器</button>' +
         '</div>' +
-        '<div class="module-note" id="bio-extra" hidden>WebAuthn 是浏览器标准：网站生成挑战，系统弹出 Face ID/Touch ID，成功后返回签名公钥凭证。网页本身仍然拿不到生物模板。</div>' +
+        '<div class="module-note" id="bio-extra" hidden>WebAuthn 是浏览器标准：网站生成挑战，系统弹出指纹或面部验证，成功后返回签名公钥凭证。网页本身仍然拿不到生物模板。</div>' +
         '</div></div>';
 
       ctx.setReadout(
         '<div class="readout-title"><span>村民交易台</span><span>VILLAGER</span></div>' +
           '<div class="readout-row"><span class="readout-label">生物数据</span><span class="readout-value warn-text">不可读取</span></div>' +
           '<div class="readout-row"><span class="readout-label">系统认证</span><span class="readout-value">WebAuthn</span></div>' +
-          '<div class="readout-row"><span class="readout-label">平台</span><span class="readout-value">iOS Secure Enclave</span></div>' +
+          '<div class="readout-row"><span class="readout-label">平台</span><span class="readout-value">' + platformName() + '</span></div>' +
           '<div class="readout-row"><span class="readout-label">平台认证器</span><span class="readout-value" id="bio-r-auth">未检测</span></div>' +
           '<div class="readout-row"><span class="readout-label">状态</span><span class="readout-value">信息卡</span></div>'
       );
@@ -75,7 +98,7 @@
         }
         try {
           var available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-          if (target) target.textContent = available ? '可用（Face ID/Touch ID）' : '不可用';
+          if (target) target.textContent = available ? '可用（' + authLabel() + '）' : '不可用';
           ctx.toast({
             icon: 'biometrics',
             title: available ? '平台认证器可用' : '平台认证器不可用',
