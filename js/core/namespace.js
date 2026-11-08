@@ -22,6 +22,7 @@
     readoutHz: 10,
     toastMs: 3000,
     issueUrl: 'https://github.com/legogogoagent/biomed-quest/issues/new',
-    logEndpoint: ''
+    // 临时预填（2026-11-08）：方便当前测试，之后移除，恢复为空，改回用户手动填写。
+    logEndpoint: 'https://sensorcraft-log.legogogo25e.workers.dev/logs'
   };
 })(window.SC = window.SC || {});
